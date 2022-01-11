@@ -71,7 +71,7 @@ public class CheckGrapples : MonoBehaviour
         }
     }
 
-    public bool TryGrappleReport(out Transform grapple) {
+    public bool TryGrappleReport(out Collider grapple) {
         var t = FindNearestDirection();
         grapple = t;
 
@@ -79,12 +79,12 @@ public class CheckGrapples : MonoBehaviour
     }
 
     void Update() {
-        Transform t = FindNearestDirection();
-        if(t != null)
-            Debug.DrawLine(Actor.position, t.position, Color.red);
+        Collider c = FindNearestDirection();
+        if(c != null)
+            Debug.DrawLine(Actor.position, c.transform.position, Color.red);
     }
 
-    Transform FindNearestDirection() {
+    Collider FindNearestDirection() {
         int inst_id = -1;
         float min_d = 0F;
 
@@ -92,12 +92,11 @@ public class CheckGrapples : MonoBehaviour
             if(Grapples[i].index == -1)
                 continue;
             else {
-                Debug.DrawLine(Actor.position, Grapples[i].collider.transform.position, Color.cyan);
+                Debug.DrawLine(Actor.position, Grapples[i].collider.ClosestPoint(Actor.position), Color.cyan);
                 //     // Grapples[i].collider.transform.position - View.position;
                 float toi = VectorHeader.LinePlaneIntersection(
                     (Grapples[i].collider.transform.position, -Vector3.up),
                     (View.position, View.up));
-                
 
                 Vector3 d = Grapples[i].collider.transform.position - Vector3.up * toi - View.position;
                 float mag = d.magnitude;
@@ -114,9 +113,9 @@ public class CheckGrapples : MonoBehaviour
         }
 
         if(inst_id != -1)
-            Debug.DrawLine(Actor.position, DetectedGrapples[inst_id].collider.transform.position, Color.red);
+            Debug.DrawLine(Actor.position, DetectedGrapples[inst_id].collider.ClosestPoint(Actor.position), Color.red);
 
 
-        return inst_id == -1 ? null : DetectedGrapples[inst_id].collider.transform;
+        return inst_id == -1 ? null : DetectedGrapples[inst_id].collider;
     }
 }

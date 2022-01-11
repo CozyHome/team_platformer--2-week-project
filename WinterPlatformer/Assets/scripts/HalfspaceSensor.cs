@@ -27,6 +27,8 @@ public class HalfspaceSensor : MonoBehaviour {
 
     void FixedUpdate() {
 
+        var r = GetComponent<SphereCollider>().radius;
+
         overlaps.Clear();
 
         archetype.Overlap(
@@ -45,22 +47,48 @@ public class HalfspaceSensor : MonoBehaviour {
             colliders
         );
 
+        var hits = new RaycastHit[10];
+
         for(int i = 0; i < count;i++) {
             Transform t = colliders[i].GetComponent<Transform>();
 
             if(Physics.ComputePenetration(
-                colliders[i],
-                t.position,
-                t.rotation,
                 archetype.Collider(),
                 transform.position,
                 transform.rotation,
+                colliders[i],
+                t.position,
+                t.rotation,
                 out Vector3 normal,
                 out float distance
             )) {
                 
                 Vector3 clos = archetype.ClosestPoint(transform.position - normal * 100);
-                Debug.DrawRay(clos + normal * distance, normal, Color.red);
+                float tlen = (clos - transform.position).magnitude;
+                //Debug.DrawRay(transform.position, clos - transform.position, Color.green);
+
+                int cast = ArchetypeHeader.TraceRay(
+                    transform.position,
+                    -normal,
+                    r,
+                    hits,
+                    filter
+                );
+
+                ArchetypeHeader.TraceFilters.FindClosestFilterInvalids(
+                    ref cast,
+                    out int i0,
+                    0F,
+                    archetype.Collider(),
+                    hits
+                );
+
+                // if(i0 >= 0)
+                //     Debug.Log(hits[i0].distance + " " + (0.5F - distance));
+
+                if(i0 >= 0 && r - hits[i0].distance < r - distance)
+                    Debug.DrawRay(hits[i0].point, hits[i0].normal, Color.red);
+
 
                 // Debug.DrawRay(
                 //     colliders[i].ClosestPoint(transform.position),
