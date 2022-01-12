@@ -8,9 +8,9 @@ public class BooleanGJK {
         private Vector3[] points;
         private Matrix4x4 m;
 
-        public ConvexPolyhedron(Vector3[] points, Transform t_m) {
+        public ConvexPolyhedron(Vector3[] points, Matrix4x4 t_m) {
             this.points = points;
-            this.m = t_m.localToWorldMatrix;
+            this.m = t_m;
         }
 
         private Vector3 GetVertex(int i) => m.MultiplyPoint(points[i]);
@@ -39,12 +39,15 @@ public class BooleanGJK {
     }
 
     public static bool GJK(in ConvexPolyhedron a, in ConvexPolyhedron b) {
+        count = 0;
         List<Vector3> splx = new List<Vector3>();
         var S = Support(a, b, a.Origin - b.Origin);
         var D = -S;
 
+        var iterat = 1000;
+
         splx.Add(S);
-        while(true) {
+        while(true && iterat-- < 1000) {
             var A = Support(a, b, D);
             if(!Same(A, D))
                 return false;
@@ -54,22 +57,82 @@ public class BooleanGJK {
                     return true;
             }
         }
+
+        return false;
     }
+
+    static int count = 0;
+    public static int stopat = 4;
 
     public static bool DoSimplex(
         ref Vector3 D,
         List<Vector3> splx) {
         if(splx.Count == 2) { 
             // potential 0D -> 1D simplex
+            // Gizmos.DrawLine(splx[0], splx[1]);
             return Simplex1D(ref D, splx);
         }
         else if(splx.Count == 3) { 
             // potential 1D -> 2D simplex generation
+            
             return Simplex2D(ref D, splx);
         }
         else if(splx.Count == 4) {
             // potential 2D -> 3D simplex generation
-            return Simplex3D(ref D, splx);
+            if(count == stopat) {
+                Gizmos.DrawLine(splx[0], splx[1]);
+                Gizmos.DrawLine(splx[0], splx[2]);
+                Gizmos.DrawLine(splx[0], splx[3]);
+                
+                Gizmos.DrawLine(splx[1], splx[2]);
+                Gizmos.DrawLine(splx[2], splx[3]);
+                Gizmos.DrawLine(splx[3], splx[1]);
+
+                Gizmos.color = Color.red; // d
+                Gizmos.DrawWireSphere(splx[3], .5F);
+                Gizmos.color = Color.blue; // c 
+                Gizmos.DrawWireSphere(splx[2], .5F);
+                Gizmos.color = Color.green; // b
+                Gizmos.DrawWireSphere(splx[1], .5F);
+                Gizmos.color = Color.yellow; // a
+                Gizmos.DrawWireSphere(splx[0], .5F);
+                Gizmos.color = Color.white;
+
+                Vector3 abc = Vector3.Cross(splx[2] - splx[0], splx[1] - splx[0]);
+                Vector3 centroid_abc = (splx[0] + splx[1] + splx[2]) / 3;
+                
+                Vector3 acd = Vector3.Cross(splx[3] - splx[0], splx[2] - splx[0]);
+                Vector3 centroid_acd = (splx[0] + splx[2] + splx[3]) / 3;
+                
+                Vector3 adb = Vector3.Cross(splx[1] - splx[0], splx[3] - splx[0]);
+                Vector3 centroid_adb = (splx[0] + splx[1] + splx[3]) / 3;
+                
+                Vector3 centroid_dcb = (splx[3] + splx[2] + splx[1]) / 3;
+                Vector3 dcb = Vector3.Cross(splx[1] - splx[3], splx[2] - splx[3]);
+
+                // normals
+                abc.Normalize();
+                acd.Normalize();
+                adb.Normalize();
+                dcb.Normalize();
+                Gizmos.DrawLine(centroid_abc, centroid_abc + abc * 3.0F);
+                Gizmos.DrawLine(centroid_acd, centroid_acd + acd * 3.0F);
+                Gizmos.DrawLine(centroid_adb, centroid_adb + adb * 3.0F);
+                //Gizmos.DrawLine(centroid_dcb, centroid_dcb + dcb * 3.0F);
+            }
+            bool b = Simplex3D(ref D, splx);
+            // if(count == 248) {
+            //     Gizmos.color = Color.magenta;
+            //     Gizmos.DrawLine(Vector3.zero, D);
+            //     Gizmos.color = Color.white;
+            //     Debug.Log("new simplex: " + splx.Count);
+            // }
+            if(count == stopat) {
+                //Gizmos.DrawLine(Vector3.zero, D);
+            }
+
+            count++;
+            return b;
         }
 
         return false; // never should reach
@@ -180,9 +243,10 @@ public class BooleanGJK {
 
             Vector3 ao = - a;
 
-            Vector3 abc = Vector3.Cross(b - a, c - a);
-            Vector3 acd = Vector3.Cross(c - a, d - a);
-            Vector3 adb = Vector3.Cross(d - a, b - a);
+            Vector3 abc = Vector3.Cross(c - a, b - a);
+            Vector3 acd = Vector3.Cross(d - a, c - a);
+            Vector3 adb = Vector3.Cross(b - a, d - a);
+            Vector3 dcb = Vector3.Cross(b - c, c - d);
 
             if(Same(abc, ao)) {
                 if(Same(acd, ao)) {
@@ -214,9 +278,9 @@ public class BooleanGJK {
                     }else {
                         // ABC
                         splx.Clear();
-                        splx.Add(a);
-                        splx.Add(b);
                         splx.Add(c);
+                        splx.Add(b);
+                        splx.Add(a);
                         D = abc;
                         return false;
                     }
@@ -234,9 +298,9 @@ public class BooleanGJK {
                     } else {
                         // ACD
                         splx.Clear();
-                        splx.Add(a);
-                        splx.Add(c);
                         splx.Add(d);
+                        splx.Add(c);
+                        splx.Add(a);
                         D = acd;
                         return false;
                     }
@@ -244,14 +308,24 @@ public class BooleanGJK {
                     if(Same(adb, ao)) {
                         // ADB
                         splx.Clear();
-                        splx.Add(a);
-                        splx.Add(d);
                         splx.Add(b);
+                        splx.Add(d);
+                        splx.Add(a);
                         D = adb;
                         return false;
-                    }else {
+                    }else if(!Same(dcb, ao)) {
                         // ENCLOSED
+                        Debug.Log(count);
+                        // Gizmos.color = Color.cyan;
+                        // Gizmos.DrawLine(Vector3.zero, D);
                         return true;
+                    }else {
+                        splx.Clear();
+                        splx.Add(b);
+                        splx.Add(c);
+                        splx.Add(d);
+                        D = dcb;
+                        return false;
                     }
                 }
             }
