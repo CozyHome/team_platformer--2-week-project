@@ -10,7 +10,7 @@ public class GJKTester : MonoBehaviour
 
     [SerializeField] private bool isColliding = false;
 
-    [SerializeField] [Range(0,10)]private int stopat = 0;
+    [SerializeField] [Range(0,1000)]private int stopat = 0;
 
     void Start() {
 

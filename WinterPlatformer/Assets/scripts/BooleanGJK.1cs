@@ -38,173 +38,58 @@ public class BooleanGJK {
         return VectorHeader.Dot(v1, v2) > 0;
     }
 
-    public struct MinkowskiVertex {
-        public Vector3 a;
-        public Vector3 b;
-        public Vector3 v;
-
-        public MinkowskiVertex(Vector3 a, Vector3 b, Vector3 ba) {
-            this.a = a; this.b = b; this.v = ba;
-        }
-
-        public MinkowskiVertex Copy() {
-            return new MinkowskiVertex(this.a, this.b, this.v);
-        }
-    }
-
-    public struct GJKSimplex {
-        public MinkowskiVertex a;
-        public MinkowskiVertex b;
-        public MinkowskiVertex c;
-        public MinkowskiVertex d;
-        private int count;
-
-        public void Add(MinkowskiVertex v) {
-            switch(count) {
-                case 0:
-                    a = v;
-                    break;
-                case 1:
-                    b = v;
-                    break;
-                case 2:
-                    c = v;
-                    break;
-                case 3:
-                    d = v;
-                    break;
-                default:
-                    count--;
-                break;
-            }
-            count++;
-        }
-
-        public void Push(MinkowskiVertex v) {
-            d = c;
-            c = b;
-            b = a;
-            a = v;
-            count++;
-            count = (count > 4) ? 4 : count;
-        }
-
-        public void Clear() {
-            count = 0;
-        }
-
-        public MinkowskiVertex this[int i] {
-            get { 
-                switch(i) {
-                    case 0:
-                        return a;
-                    case 1:
-                        return b;
-                    case 2:
-                        return c;
-                    case 3:
-                        return d;
-                    default:
-                        return new MinkowskiVertex(Vector3.zero, Vector3.zero, Vector3.zero); // should never happen
-                }
-            }
-            set {
-                switch(i) {
-                    case 0:
-                        a = value;
-                        break;
-                    case 1:
-                        b = value;
-                        break;
-                    case 2:
-                        c = value;
-                        break;
-                    case 3:
-                        d = value;
-                        break;
-                    default:
-                        break;
-                }
-            }
-        }
-
-        public int Count => count;
-    }
-
     public static bool GJK(in ConvexPolyhedron a, in ConvexPolyhedron b) {
-        
-        GJKSimplex splx = new GJKSimplex();
-        MinkowskiVertex LastVertex = Support(a, b, a.Origin - b.Origin);
-        Vector3 D = -LastVertex.v;
+        List<Vector3> splx = new List<Vector3>();
+        (Vector3 p, Vector3 p1, Vector3 p2) S = Support(a, b, a.Origin - b.Origin);
+        var D = -S.p;
 
         count = 0;
         int iterat = 100;
-        splx.Add(LastVertex);
+        splx.Add(S.p);
+
+        bool isCloseEnough(List<Vector3> splx, Vector3 p) {
+            for(int i = 0;i < splx.Count;i++) {
+                if((splx[i] - p).magnitude < 0.01F) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        var V = S.p;
 
         while(iterat-- > 0 && true) {
             count++;
-            MinkowskiVertex Vertex = Support(a, b, D);
+            var (A, B, C) = Support(a, b, D);
+            
+            // NUMERICALLY UNSTABLE EXIT CONDITION:
+            // this basically determines that our support point discovered is not in the direction of D.
+            // im not entirely sure if this is the same as determining if a duplicate support point was
+            // discovered or not.
 
-            float dd = Vector3.Dot(Vertex.v, Vertex.v); 
-            if(splx.Count > 1 && dd - Vector3.Dot(Vertex.v, LastVertex.v) <= dd * Vector3.kEpsilon) {
-                // splx.Push(Vertex);
-                switch(splx.Count) {
-                    case 2:
-                        // edge containing new vertex
-                        float _l = VectorHeader.Barycentric1DClamped(
-                            (splx[0].v, splx[1].v),
-                            Vector3.zero
-                        );
-
-                        Vector3 _p3 = splx[0].a * (_l) + splx[1].a * (1 -  _l);
-                        Vector3 _p4 = splx[0].b * (_l) + splx[1].b * (1 -  _l);
-                        Gizmos.DrawLine(_p3, _p4);
-                        Gizmos.color = Color.magenta;
-                        Gizmos.DrawWireSphere(splx[0].a, .125F);
-                        Gizmos.DrawWireSphere(splx[1].a, .125F);
-                        Gizmos.DrawWireSphere(Vertex.a, .125F);
-
-                        Gizmos.DrawWireSphere(splx[0].b, .125F);
-                        Gizmos.DrawWireSphere(splx[1].b, .125F);
-                        Gizmos.DrawWireSphere(Vertex.b, .125F);
-                    break;
-                    case 3:
-                        // triangle containing new vertex
-                        Vector3 _c = VectorHeader.Barycentric2DClamped(
-                            (splx[0].v, splx[1].v, splx[2].v),
-                            Vector3.zero
-                        );
-
-                        Vector3 _p1 = splx[0].a * _c[0] + splx[1].a * _c[1] + splx[2].a * _c[2];
-                        Vector3 _p2 = splx[0].b * _c[0] + splx[1].b * _c[1] + splx[2].b * _c[2];
-                        Gizmos.color = Color.red;
-                        // Debug.Log(splx[1].a + " " + splx[1].b);
-                        Gizmos.DrawWireSphere(splx[0].a, .125F);
-                        Gizmos.DrawWireSphere(splx[1].a, .125F);
-                        Gizmos.DrawWireSphere(splx[2].a, .125F);
-                        Gizmos.color = Color.cyan;
-                        Gizmos.DrawWireSphere(splx[0].b, .125F);
-                        Gizmos.DrawWireSphere(splx[1].b, .125F);
-                        Gizmos.DrawWireSphere(splx[2].b, .125F);
-                        Gizmos.color = Color.yellow;
-
-                        Gizmos.DrawWireSphere(Vertex.a, .125F);
-                        Gizmos.DrawWireSphere(Vertex.b, .125F);
-                    break;
-                    case 4:
-                        // tetrahedron containing new vertex
-                    break;
-                }
-                Debug.Log("Converged non-intersecting @: " + count + " " + splx.Count);
+            float dd = Vector3.Dot(V, V); 
+            // if(dd + Vector3.Dot(A, V) <= dd * 0.0001F /*!Same(A, D)*/) {
+            if(
+                isCloseEnough(splx, A) ||
+                dd - Vector3.Dot(A, V) <= dd * 0.0001F) {
+                // call closest point algorithm on simplex?
+                // Debug.Log("Simplex: " + splx.Count + " " + count + " " + V.magnitude);
+                Debug.Log(V.magnitude + " ");
                 return false;
             }
             else { 
-                splx.Push(Vertex);
-                LastVertex = Vertex;
-
-                if(DoSimplex(ref D, ref Vertex, ref splx)) {
-                    Debug.Log("Converged intersecting @: " + count + " " + splx.Count);
+                splx.Insert(0, A);
+                
+                if(DoSimplex(ref D, ref V, splx)) {
                     return true;
+                }
+                else {
+                    // if(count == stopat) {
+                    //     Gizmos.color = Color.cyan;
+                    //     Gizmos.DrawLine(V, Vector3.zero);
+                    //     // Debug.Log(V + " " + count);
+                    //     Gizmos.color = Color.cyan;
+                    // }
                 }
             }
         }
@@ -216,22 +101,22 @@ public class BooleanGJK {
     static int count = 0;
     public static int stopat = 1;
 
-    public static bool DoSimplex(ref Vector3 D, ref MinkowskiVertex V, ref GJKSimplex splx) {
+    public static bool DoSimplex(ref Vector3 D, ref Vector3 V, List<Vector3> splx) {
         // potential 0D -> 1D simplex
         if(splx.Count == 2) {
             if(count == stopat) {
                 Gizmos.color = Color.white;
-                Gizmos.DrawLine(splx[0].v, splx[1].v);
+                Gizmos.DrawLine(splx[0], splx[1]);
             }
 
-            return Simplex1D(ref D, ref V, ref splx);
+            return Simplex1D(ref D, ref V, splx);
         }
         // potential 1D -> 2D simplex generation
         else if(splx.Count == 3) { 
             if(count == stopat) {
-                Vector3 a = splx[0].v;
-                Vector3 b = splx[1].v;
-                Vector3 c = splx[2].v;
+                Vector3 a = splx[0];
+                Vector3 b = splx[1];
+                Vector3 c = splx[2];
 
                 Gizmos.color = Color.magenta;
                 Gizmos.DrawLine(a, b);
@@ -244,7 +129,7 @@ public class BooleanGJK {
                 Gizmos.color = Color.white;
             }
 
-            return Simplex2D(ref D, ref V, ref splx);
+            return Simplex2D(ref D, ref V, splx);
         }
         // potential 2D -> 3D simplex generation
         else if(splx.Count == 4) {
@@ -252,10 +137,10 @@ public class BooleanGJK {
                 Color draw = count == stopat ? Color.white : Color.black;
                 float radi = count == stopat ? 0.125F : 0.25F;
                 Gizmos.color = draw;
-                Vector3 a = splx[0].v;
-                Vector3 b = splx[1].v;
-                Vector3 c = splx[2].v;
-                Vector3 d = splx[3].v;
+                Vector3 a = splx[0];
+                Vector3 b = splx[1];
+                Vector3 c = splx[2];
+                Vector3 d = splx[3];
         
                 Gizmos.DrawLine(a, b);
                 Gizmos.DrawLine(a, c);
@@ -293,17 +178,17 @@ public class BooleanGJK {
                 Gizmos.DrawLine(centroid_acd, centroid_acd + acd * 3.0F);
                 Gizmos.DrawLine(centroid_adb, centroid_adb + adb * 3.0F);
             }
-            return Simplex3D(ref D, ref V, ref splx);
+            return Simplex3D(ref D, ref V, splx);
         }
         return false; // never should reach
     }
 
-    public static bool Simplex1D(ref Vector3 D, ref MinkowskiVertex V, ref GJKSimplex splx) {
-        MinkowskiVertex a = splx[0];
-        MinkowskiVertex b = splx[1];
+    public static bool Simplex1D(ref Vector3 D, ref Vector3 V, List<Vector3> splx) {
+        Vector3 a = splx[0];
+        Vector3 b = splx[1];
 
-        Vector3 ab = b.v - a.v;
-        Vector3 ao =     - a.v;
+        Vector3 ab = b - a;
+        Vector3 ao =   - a;
 
         if(Same(ab, ao)) {
             // splx is not modified
@@ -316,20 +201,20 @@ public class BooleanGJK {
             D = ao;
         }
 
-        var (v1, v2) = VectorHeader.ClosestPointEdge((a.v, b.v), Vector3.zero);
-        V.v = v2 - v1;
+        var (v1, v2) = VectorHeader.ClosestPointEdge((a, b), Vector3.zero);
+        V = v2 - v1;
 
         return false;
     }
 
-    public static bool Simplex2D(ref Vector3 D, ref MinkowskiVertex V, ref GJKSimplex splx) {
-        MinkowskiVertex a = splx[0];
-        MinkowskiVertex b = splx[1];
-        MinkowskiVertex c = splx[2];
+    public static bool Simplex2D(ref Vector3 D, ref Vector3 V, List<Vector3> splx) {
+        Vector3 a = splx[0];
+        Vector3 b = splx[1];
+        Vector3 c = splx[2];
 
-        Vector3 ab = b.v - a.v;
-        Vector3 ac = c.v - a.v;
-        Vector3 ao =   - a.v;
+        Vector3 ab = b - a;
+        Vector3 ac = c - a;
+        Vector3 ao =   - a;
 
         Vector3 abc = Vector3.Cross(ab, ac);
         
@@ -342,10 +227,10 @@ public class BooleanGJK {
                 D = Vector3.Cross(Vector3.Cross(ac, ao), ac);
 
                 var (v1, v2) = VectorHeader.ClosestPointEdge(
-                    (a.v, c.v),
+                    (a, c),
                     Vector3.zero
                 );
-                V.v = v2 - v1;
+                V = v2 - v1;
 
             } else {
                 if(Same(ab, ao)) {
@@ -356,17 +241,17 @@ public class BooleanGJK {
                     D = Vector3.Cross(Vector3.Cross(ab, ao), ab);
 
                     var (v1, v2) = VectorHeader.ClosestPointEdge(
-                        (a.v, b.v),
+                        (a, b),
                         Vector3.zero
                     );
-                    V.v = v2 - v1;
+                    V = v2 - v1;
 
                 } else {
                     // A
                     splx.Clear();
                     splx.Add(a);
                     D = ao;
-                    V.v = a.v;
+                    V = a;
                 }
             }
         } else {
@@ -379,16 +264,16 @@ public class BooleanGJK {
                     D = Vector3.Cross(Vector3.Cross(ab, ao), ab);
                     
                     var (v1, v2) = VectorHeader.ClosestPointEdge(
-                        (a.v, b.v),
+                        (a, b),
                         Vector3.zero
                     );
-                    V.v = v2 - v1;
+                    V = v2 - v1;
                 }else {
                     // A
                     splx.Clear();
                     splx.Add(a);
                     D = ao;
-                    V.v = a.v;
+                    V = a;
                 }
             } else {
                 if(Same(abc, ao)) {
@@ -396,10 +281,10 @@ public class BooleanGJK {
                     D = abc;
                     
                     var (v1, v2) = VectorHeader.ClosestPointTriangle(
-                        (a.v, b.v, c.v),
+                        (a, b, c),
                         Vector3.zero
                     );
-                    V.v = v2 - v1;
+                    V = v2 - v1;
                 } else {
                     // NEGABC
                     splx.Clear();
@@ -409,27 +294,27 @@ public class BooleanGJK {
                     D = -abc;
 
                     var (v1, v2) = VectorHeader.ClosestPointTriangle(
-                        (a.v, b.v, c.v),
+                        (a, b, c),
                         Vector3.zero
                     );
-                    V.v = v2 - v1;
+                    V = v2 - v1;
                 }
             }
         }
         return false; // not done building the simplex!
     }
 
-    public static bool Simplex3D(ref Vector3 D, ref MinkowskiVertex V, ref GJKSimplex splx) {
-        MinkowskiVertex a = splx[0];
-        MinkowskiVertex b = splx[1];
-        MinkowskiVertex c = splx[2];
-        MinkowskiVertex d = splx[3];
+    public static bool Simplex3D(ref Vector3 D, ref Vector3 V, List<Vector3> splx) {
+        Vector3 a = splx[0];
+        Vector3 b = splx[1];
+        Vector3 c = splx[2];
+        Vector3 d = splx[3];
 
-        Vector3 ao = - a.v;
+        Vector3 ao = - a;
 
-        Vector3 abc = Vector3.Cross(b.v - a.v, c.v - a.v);
-        Vector3 acd = Vector3.Cross(c.v - a.v, d.v - a.v);
-        Vector3 adb = Vector3.Cross(d.v - a.v, b.v - a.v);
+        Vector3 abc = Vector3.Cross(b - a, c - a);
+        Vector3 acd = Vector3.Cross(c - a, d - a);
+        Vector3 adb = Vector3.Cross(d - a, b - a);
         
         if(Same(abc, ao)) {
             if(Same(acd, ao)) {
@@ -438,7 +323,7 @@ public class BooleanGJK {
                     splx.Clear();
                     splx.Add(a);
                     D = ao;
-                    V.v = a.v;
+                    V = a;
 
                     return false;
                 } else {
@@ -446,13 +331,13 @@ public class BooleanGJK {
                     splx.Clear();
                     splx.Add(a);
                     splx.Add(c);
-                    D = Vector3.Cross(Vector3.Cross(c.v - a.v, ao), c.v - a.v);
+                    D = Vector3.Cross(Vector3.Cross(c - a, ao), c - a);
                     
                     var (v1, v2) = VectorHeader.ClosestPointEdge(
-                        (a.v, c.v),
+                        (a, c),
                         Vector3.zero
                     );
-                    V.v = v2 - v1;
+                    V = v2 - v1;
 
                     return false;
                 }
@@ -462,13 +347,13 @@ public class BooleanGJK {
                     splx.Clear();
                     splx.Add(a);
                     splx.Add(b);
-                    D = Vector3.Cross(Vector3.Cross(b.v - a.v, ao), b.v - a.v);
+                    D = Vector3.Cross(Vector3.Cross(b - a, ao), b - a);
 
                     var (v1, v2) = VectorHeader.ClosestPointEdge(
-                        (a.v, b.v),
+                        (a, b),
                         Vector3.zero
                     );
-                    V.v = v2 - v1;
+                    V = v2 - v1;
 
                     return false;
                 } else {
@@ -480,11 +365,11 @@ public class BooleanGJK {
                     D = abc;
 
                     var(v1, v2) = VectorHeader.ClosestPointTriangle(
-                        (a.v, b.v, c.v),
+                        (a,b,c),
                         Vector3.zero
                     );
 
-                    V.v = v2 - v1;
+                    V = v2 - v1;
                     return false;
                 }
             }
@@ -495,13 +380,13 @@ public class BooleanGJK {
                     splx.Clear();
                     splx.Add(a);
                     splx.Add(d);
-                    D = Vector3.Cross(Vector3.Cross(d.v - a.v, ao), d.v - a.v);
+                    D = Vector3.Cross(Vector3.Cross(d - a, ao), d - a);
 
                     var (v1, v2) = VectorHeader.ClosestPointEdge(
-                        (a.v, d.v),
+                        (a, d),
                         Vector3.zero
                     );
-                    V.v = v2 - v1;
+                    V = v2 - v1;
 
                     return false;
                 } else {
@@ -513,10 +398,10 @@ public class BooleanGJK {
                     D = acd;
 
                     var(v1, v2) = VectorHeader.ClosestPointTriangle(
-                        (a.v, c.v, d.v),
+                        (a,c,d),
                         Vector3.zero
                     );
-                    V.v = v2 - v1;
+                    V = v2 - v1;
 
                     return false;
                 }
@@ -529,28 +414,28 @@ public class BooleanGJK {
                     splx.Add(b);
                     D = adb;
                     var(v1, v2) = VectorHeader.ClosestPointTriangle(
-                        (a.v, d.v, b.v),
+                        (a,d,b),
                         Vector3.zero
                     );
 
-                    V.v = v2 - v1;
+                    V = v2 - v1;
                     return false;
                 }
                 else {
-                    V.v = Vector3.zero;
+                    V = Vector3.zero;
                     return true;
                 }
             }
         }
     }
     
-    public static MinkowskiVertex Support(
+    public static (Vector3, Vector3, Vector3) Support(
             in ConvexPolyhedron a,
             in ConvexPolyhedron b,
             Vector3 D) {
                 Vector3 _point_a = a.Support(D);
                 Vector3 _point_b = b.Support(-D);
-            return new MinkowskiVertex(_point_a, _point_b, _point_a - _point_b); 
+            return (_point_a - _point_b, _point_a, _point_b); 
 
     }
 }
