@@ -131,7 +131,13 @@ public class BooleanGJK {
         public int Count => count;
     }
 
-    public static bool GJK(in ConvexPolyhedron a, in ConvexPolyhedron b) {
+    public enum GJKCASE {
+        INTERSECTING = 0,
+        NONINTERSECTING = 1,
+        DEGENERATE = 2
+    };
+
+    public static GJKCASE GJK(in ConvexPolyhedron a, in ConvexPolyhedron b) {
         
         GJKSimplex splx = new GJKSimplex();
         MinkowskiVertex LastVertex = Support(a, b, a.Origin - b.Origin);
@@ -141,14 +147,28 @@ public class BooleanGJK {
         int iterat = 100;
         splx.Add(LastVertex);
 
+        bool isSame(Vector3 v1) {
+            for(int i = 0;i<splx.Count;i++) {
+                if((v1 - splx[i].v).magnitude < Vector3.kEpsilon)
+                    return true;
+                else 
+                    continue;
+            }
+
+            return false;
+        }
+
         while(iterat-- > 0 && true) {
             count++;
             MinkowskiVertex Vertex = Support(a, b, D);
-
             float dd = Vector3.Dot(Vertex.v, Vertex.v); 
-            if(splx.Count > 1 && dd - Vector3.Dot(Vertex.v, LastVertex.v) <= dd * Vector3.kEpsilon) {
+            if(isSame(Vertex.v) ||
+               splx.Count > 2 && dd - Vector3.Dot(Vertex.v, LastVertex.v) <= dd * Vector3.kEpsilon) {
                 // splx.Push(Vertex);
                 switch(splx.Count) {
+                    case 1:
+                        Gizmos.DrawLine(splx[0].a, splx[1].b);
+                    break;
                     case 2:
                         // edge containing new vertex
                         float _l = VectorHeader.Barycentric1DClamped(
@@ -164,6 +184,7 @@ public class BooleanGJK {
                         Gizmos.DrawWireSphere(splx[1].a, .125F);
                         Gizmos.DrawWireSphere(Vertex.a, .125F);
 
+                        Gizmos.color = Color.cyan;
                         Gizmos.DrawWireSphere(splx[0].b, .125F);
                         Gizmos.DrawWireSphere(splx[1].b, .125F);
                         Gizmos.DrawWireSphere(Vertex.b, .125F);
@@ -175,6 +196,7 @@ public class BooleanGJK {
                             (splx[0].v, splx[1].v, splx[2].v),
                             Vector3.zero
                         );
+                        // Debug.Log(_c);
 
                         Vector3 _p1 = splx[0].a * _c[0] + splx[1].a * _c[1] + splx[2].a * _c[2];
                         Vector3 _p2 = splx[0].b * _c[0] + splx[1].b * _c[1] + splx[2].b * _c[2];
@@ -194,25 +216,28 @@ public class BooleanGJK {
                         Gizmos.DrawLine(_p1, _p2);
                     break;
                     case 4:
-                        // tetrahedron containing new vertex
+                        // tetrahedron containing new vertex this should never happen
                     break;
                 }
+
                 Debug.Log("Converged non-intersecting @: " + count + " " + splx.Count);
-                return false;
+                return GJKCASE.NONINTERSECTING;
             }
             else { 
                 splx.Push(Vertex);
                 LastVertex = Vertex;
+                
 
                 if(DoSimplex(ref D, ref Vertex, ref splx)) {
                     Debug.Log("Converged intersecting @: " + count + " " + splx.Count);
-                    return true;
+                    return GJKCASE.INTERSECTING;
                 }
+                D = -Vertex.v;
             }
         }
 
         Debug.Log("it: " + (count));
-        return false;
+        return GJKCASE.DEGENERATE;
     }
 
     static int count = 0;
@@ -433,6 +458,7 @@ public class BooleanGJK {
         Vector3 acd = Vector3.Cross(c.v - a.v, d.v - a.v);
         Vector3 adb = Vector3.Cross(d.v - a.v, b.v - a.v);
         
+
         if(Same(abc, ao)) {
             if(Same(acd, ao)) {
                 if(Same(adb, ao)) {
@@ -487,12 +513,15 @@ public class BooleanGJK {
                     );
 
                     V.v = v2 - v1;
+
                     return false;
                 }
             }
         } else {
             if(Same(acd, ao)) {
+                
                 if(Same(adb, ao)) {
+                    
                     // AD
                     splx.Clear();
                     splx.Add(a);
@@ -504,6 +533,9 @@ public class BooleanGJK {
                         Vector3.zero
                     );
                     V.v = v2 - v1;
+                    // if(count == stopat) {
+                    //     Debug.Log("OK " + count);
+                    // }
 
                     return false;
                 } else {
@@ -519,7 +551,7 @@ public class BooleanGJK {
                         Vector3.zero
                     );
                     V.v = v2 - v1;
-
+                    
                     return false;
                 }
             } else {
@@ -534,7 +566,6 @@ public class BooleanGJK {
                         (a.v, d.v, b.v),
                         Vector3.zero
                     );
-
                     V.v = v2 - v1;
                     return false;
                 }

@@ -32,7 +32,7 @@ public class GJKTester : MonoBehaviour
                     PolyhedronB.GetComponent<MeshCollider>().sharedMesh.vertices,
                     PolyhedronB.transform.localToWorldMatrix
                 )
-            );
+            ) == BooleanGJK.GJKCASE.INTERSECTING;
 
             isColliding = answer;
             Gizmos.color = answer ? Color.red : Color.green;
