@@ -204,24 +204,16 @@ namespace com.cozyhome.Vectors
         public static (Vector3 a, Vector3 b) ClosestPointEdge(
         (Vector3 a, Vector3 b) edge,
         Vector3 p) {
-            bool Same(Vector3 v1, Vector3 v2) {
-                return VectorHeader.Dot(v1, v2) > 0;
-            };
+            // bool Same(Vector3 v1, Vector3 v2) {
+            //     return VectorHeader.Dot(v1, v2) > 0;
+            // };
             
             Vector3 ao = p - edge.a;
             Vector3 bo = p - edge.b;
             Vector3 ab = edge.b - edge.a;
             Vector3 abo = Vector3.Cross(ao, bo);
             
-            if(Same(ao, ab) && Same(bo, ab)) {
-                return (p, edge.b);
-            }
-            else if(!Same(ao, ab) && !Same(bo, ab)) {
-                return (p, edge.a);
-            }
-            else {
-                return (p, p - VectorHeader.ProjectVector(p - edge.a, Vector3.Cross(abo, ab).normalized));
-            }
+            return (p, edge.a + ab * Mathf.Clamp01(VectorHeader.Dot(p - edge.a, Vector3.Cross(abo, ab).normalized)));
         }
 
         public static float Barycentric1DClamped(
@@ -298,6 +290,30 @@ namespace com.cozyhome.Vectors
                 // normals
                     // verts
                         // edges
+            // Vector3 v = Bary(p);
+            
+            if(Same(ab_n, bo) && Same(bc_n, bo)) {
+                if(Same(bo, bc))
+                    return Bary(p - VectorHeader.ProjectVector(bo, bc_n.normalized));
+                else if(!Same(bo, ab))
+                    return Bary(p - VectorHeader.ProjectVector(bo, ab_n.normalized));
+            }
+
+            if(Same(ab_n, ao) && Same(ca_n, ao)) {
+                if(!Same(ca, ao))
+                    return Bary(p - VectorHeader.ProjectVector(ao, ca_n.normalized));
+                else if(Same(ab, ao))
+                    return Bary(p - VectorHeader.ProjectVector(ao, ab_n.normalized));
+            }
+
+            if(Same(bc_n, co) && Same(ca_n, co)) {
+                if(Same(co, ca))
+                    return Bary(p - VectorHeader.ProjectVector(co, ca_n.normalized));
+                else if(!Same(co, bc))
+                    return Bary(p - VectorHeader.ProjectVector(co, bc_n.normalized));
+            }
+
+            // return v;
             if(Same(ab_n, ao)) {
                 // isolate vertex b
                 if(Same(ao, ab) && Same(bo, ab))
@@ -329,13 +345,13 @@ namespace com.cozyhome.Vectors
         }
 
         public enum Barycentric2DState {
-            A,
-            B,
-            C,
-            AB,
-            BC,
-            CA,
-            ABC
+            TOP,
+            LEFTBOT,
+            RIGHTBOT,
+            LEFT,
+            BOT,
+            RIGHT,
+            IN
         };
 
         public static Barycentric2DState Barycentric2DVoronoi(
@@ -375,34 +391,34 @@ namespace com.cozyhome.Vectors
                 // normals
                     // verts
                         // edges
-            if(Same(ab_n, ao)) {
+            if(Same(ab_n, ao) ^ Same(ab_n, ao)) {
                 // isolate vertex b
                 if(Same(ao, ab) && Same(bo, ab))
-                    return Barycentric2DState.B; //Bary(tri.b);
+                    return Barycentric2DState.LEFTBOT; //Bary(tri.b);
                 else if(!Same(ao, ab) && !Same(bo, ab))
-                    return Barycentric2DState.A; // Bary(tri.a); // vert a
+                    return Barycentric2DState.TOP; // Bary(tri.a); // vert a
                 else // vert ab
-                    return Barycentric2DState.AB; // Bary(p - VectorHeader.ProjectVector(ao, ab_n.normalized));
+                    return Barycentric2DState.LEFT; // Bary(p - VectorHeader.ProjectVector(ao, ab_n.normalized));
             }
             else if(Same(bc_n, bo)) {
                 // isolate vertex c
                 if(Same(bo, bc) && Same(co, bc))
-                    return Barycentric2DState.C; //Bary(tri.c);
+                    return Barycentric2DState.RIGHTBOT; //Bary(tri.c);
                 else if(!Same(bo, bc) && !Same(co, bc)) // isolate vertex b
-                    return Barycentric2DState.B; // Bary(tri.b);
+                    return Barycentric2DState.LEFTBOT; // Bary(tri.b);
                 else
-                    return Barycentric2DState.BC; // Bary(p - VectorHeader.ProjectVector(bo, bc_n.normalized));
+                    return Barycentric2DState.BOT; // Bary(p - VectorHeader.ProjectVector(bo, bc_n.normalized));
             }
             else if(Same(ca_n, co)) {
                 if(Same(ao, ca) && Same(co, ca))
-                    return Barycentric2DState.A; // Bary(tri.a);
+                    return Barycentric2DState.TOP; // Bary(tri.a);
                 else if(!Same(ao, ca) && !Same(co, ca))
-                    return Barycentric2DState.C; // Bary(tri.c);
+                    return Barycentric2DState.RIGHTBOT; // Bary(tri.c);
                 else 
-                    return Barycentric2DState.CA; // Bary(p - VectorHeader.ProjectVector(co, ca_n.normalized));
+                    return Barycentric2DState.RIGHT; // Bary(p - VectorHeader.ProjectVector(co, ca_n.normalized));
             }
             else
-                return Barycentric2DState.ABC; // Bary(p);
+                return Barycentric2DState.IN; // Bary(p);
         }
     }
 }

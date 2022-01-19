@@ -211,8 +211,8 @@ public class BooleanGJK {
                         Gizmos.DrawWireSphere(splx[2].b, .125F);
                         Gizmos.color = Color.yellow;
 
-                        Gizmos.DrawWireSphere(Vertex.a, .125F);
-                        Gizmos.DrawWireSphere(Vertex.b, .125F);
+                        // Gizmos.DrawWireSphere(Vertex.a, .125F);
+                        // Gizmos.DrawWireSphere(Vertex.b, .125F);
                         Gizmos.DrawLine(_p1, _p2);
                     break;
                     case 4:
@@ -316,9 +316,9 @@ public class BooleanGJK {
                 acd.Normalize();
                 adb.Normalize();
                 dcb.Normalize();
-                Gizmos.DrawLine(centroid_abc, centroid_abc + abc * 3.0F);
-                Gizmos.DrawLine(centroid_acd, centroid_acd + acd * 3.0F);
-                Gizmos.DrawLine(centroid_adb, centroid_adb + adb * 3.0F);
+                Gizmos.DrawLine(centroid_abc, centroid_abc + abc * 1.0F);
+                Gizmos.DrawLine(centroid_acd, centroid_acd + acd * 1.0F);
+                Gizmos.DrawLine(centroid_adb, centroid_adb + adb * 1.0F);
             }
             return Simplex3D(ref D, ref V, ref splx);
         }
@@ -458,123 +458,312 @@ public class BooleanGJK {
         Vector3 acd = Vector3.Cross(c.v - a.v, d.v - a.v);
         Vector3 adb = Vector3.Cross(d.v - a.v, b.v - a.v);
         
+        // regions
+            // normals
+            // edges
+            // verts
 
-        if(Same(abc, ao)) {
-            if(Same(acd, ao)) {
-                if(Same(adb, ao)) {
-                    // A
-                    splx.Clear();
-                    splx.Add(a);
-                    D = ao;
-                    V.v = a.v;
+        if(Same(ao, abc)) {
+            // run barycentric
+            VectorHeader.Barycentric2DState state = VectorHeader.Barycentric2DVoronoi(
+                (a.v, b.v, c.v),
+                Vector3.zero
+            );
 
-                    return false;
-                } else {
-                    //AC
-                    splx.Clear();
-                    splx.Add(a);
-                    splx.Add(c);
-                    D = Vector3.Cross(Vector3.Cross(c.v - a.v, ao), c.v - a.v);
-                    
-                    var (v1, v2) = VectorHeader.ClosestPointEdge(
-                        (a.v, c.v),
-                        Vector3.zero
-                    );
-                    V.v = v2 - v1;
+            if(state == VectorHeader.Barycentric2DState.IN) {
+                splx.Clear();
+                splx.Add(a);
+                splx.Add(b);
+                splx.Add(c);
+                D = abc;
 
-                    return false;
-                }
-            } else {
-                if(Same(adb, ao)) {
-                    // AB
-                    splx.Clear();
-                    splx.Add(a);
-                    splx.Add(b);
-                    D = Vector3.Cross(Vector3.Cross(b.v - a.v, ao), b.v - a.v);
+                var (v1, v2) = VectorHeader.ClosestPointTriangle(
+                    (a.v, b.v, c.v),
+                    Vector3.zero
+                );
 
-                    var (v1, v2) = VectorHeader.ClosestPointEdge(
-                        (a.v, b.v),
-                        Vector3.zero
-                    );
-                    V.v = v2 - v1;
-
-                    return false;
-                } else {
-                    // ABC
-                    splx.Clear();
-                    splx.Add(a);
-                    splx.Add(b);
-                    splx.Add(c);
-                    D = abc;
-
-                    var(v1, v2) = VectorHeader.ClosestPointTriangle(
-                        (a.v, b.v, c.v),
-                        Vector3.zero
-                    );
-
-                    V.v = v2 - v1;
-
-                    return false;
-                }
+                V.v = v2 - v1;
+                return false;
             }
-        } else {
-            if(Same(acd, ao)) {
-                
-                if(Same(adb, ao)) {
-                    
-                    // AD
-                    splx.Clear();
-                    splx.Add(a);
-                    splx.Add(d);
-                    D = Vector3.Cross(Vector3.Cross(d.v - a.v, ao), d.v - a.v);
+            else if(state == VectorHeader.Barycentric2DState.RIGHT) {
+                splx.Clear();
+                splx.Add(a);
+                splx.Add(b);
 
-                    var (v1, v2) = VectorHeader.ClosestPointEdge(
-                        (a.v, d.v),
-                        Vector3.zero
-                    );
-                    V.v = v2 - v1;
-                    // if(count == stopat) {
-                    //     Debug.Log("OK " + count);
-                    // }
+                D = Vector3.Cross(Vector3.Cross(b.v - a.v, ao), b.v - a.v);
 
-                    return false;
-                } else {
-                    // ACD
-                    splx.Clear();
-                    splx.Add(a);
-                    splx.Add(c);
-                    splx.Add(d);
-                    D = acd;
+                var (v1, v2) = VectorHeader.ClosestPointEdge(
+                    (a.v, b.v),
+                    Vector3.zero
+                );
 
-                    var(v1, v2) = VectorHeader.ClosestPointTriangle(
-                        (a.v, c.v, d.v),
-                        Vector3.zero
-                    );
-                    V.v = v2 - v1;
-                    
-                    return false;
-                }
-            } else {
-                if(Same(adb, ao)) {
-                    // ADB
-                    splx.Clear();
-                    splx.Add(a);
-                    splx.Add(d);
-                    splx.Add(b);
-                    D = adb;
-                    var(v1, v2) = VectorHeader.ClosestPointTriangle(
-                        (a.v, d.v, b.v),
-                        Vector3.zero
-                    );
-                    V.v = v2 - v1;
-                    return false;
-                }
-                else {
-                    V.v = Vector3.zero;
-                    return true;
-                }
+                V.v = v2 - v1;
+                return false;
+            }
+            else if(state == VectorHeader.Barycentric2DState.LEFT) {
+                splx.Clear();
+                splx.Add(a);
+                splx.Add(c);
+
+                D = Vector3.Cross(Vector3.Cross(c.v - a.v, ao), c.v - a.v);
+
+                var (v1, v2) = VectorHeader.ClosestPointEdge(
+                    (a.v, c.v),
+                    Vector3.zero
+                );
+
+                V.v = v2 - v1;
+                return false;
+            }
+            else if(state == VectorHeader.Barycentric2DState.TOP) {
+                splx.Clear();
+                splx.Add(a);
+
+                D = a.v;
+                V.v = a.v;
+
+                return false;
             }
         }
+        else if(Same(ao, acd)) {
+            VectorHeader.Barycentric2DState state = VectorHeader.Barycentric2DVoronoi(
+                (a.v, c.v, d.v),
+                Vector3.zero
+            );
+
+            if(state == VectorHeader.Barycentric2DState.IN) {
+                splx.Clear();
+                splx.Add(a);
+                splx.Add(c);
+                splx.Add(d);
+                D = acd;
+
+                var (v1, v2) = VectorHeader.ClosestPointTriangle(
+                    (a.v, c.v, d.v),
+                    Vector3.zero
+                );
+
+                V.v = v2 - v1;
+                return false;
+            }
+            else if(state == VectorHeader.Barycentric2DState.RIGHT) {
+                splx.Clear();
+                splx.Add(a);
+                splx.Add(c);
+                
+                D = Vector3.Cross(Vector3.Cross(c.v - a.v, ao), c.v - a.v);
+                var (v1, v2) = VectorHeader.ClosestPointEdge(
+                    (a.v, c.v),
+                    Vector3.zero
+                );
+
+                V.v = v2 - v1;
+                return false;
+            }
+            else if(state == VectorHeader.Barycentric2DState.LEFT) {
+                splx.Clear();
+                splx.Add(a);
+                splx.Add(d);
+                
+                D = Vector3.Cross(Vector3.Cross(d.v - a.v, ao), d.v - a.v);
+                var (v1, v2) = VectorHeader.ClosestPointEdge(
+                    (a.v, d.v),
+                    Vector3.zero
+                );
+
+                V.v = v2 - v1;
+                return false;
+            }
+            else if(state == VectorHeader.Barycentric2DState.TOP) {
+                splx.Clear();
+                splx.Add(a);
+
+                D = a.v;
+                V.v = a.v;
+
+                return false;
+            }
+        }
+        else if(Same(adb, ao)) {
+            VectorHeader.Barycentric2DState state = VectorHeader.Barycentric2DVoronoi(
+                (a.v, d.v, b.v),
+                Vector3.zero
+            );
+
+            if(state == VectorHeader.Barycentric2DState.IN) {
+                splx.Clear();
+                splx.Add(a);
+                splx.Add(d);
+                splx.Add(b);
+                D = adb;
+
+                var (v1, v2) = VectorHeader.ClosestPointTriangle(
+                    (a.v, d.v, b.v),
+                    Vector3.zero
+                );
+
+                V.v = v2 - v1;
+                return false;
+            }
+            else if(state == VectorHeader.Barycentric2DState.RIGHT) {
+                splx.Clear();
+                splx.Add(a);
+                splx.Add(d);
+                
+                D = Vector3.Cross(Vector3.Cross(d.v - a.v, ao), d.v - a.v);
+                var (v1, v2) = VectorHeader.ClosestPointEdge(
+                    (a.v, d.v),
+                    Vector3.zero
+                );
+
+                V.v = v2 - v1;
+                return false;
+            }
+            else if(state == VectorHeader.Barycentric2DState.LEFT) {
+                splx.Clear();
+                splx.Add(a);
+                splx.Add(b);
+                
+                D = Vector3.Cross(Vector3.Cross(b.v - a.v, ao), b.v - a.v);
+                var (v1, v2) = VectorHeader.ClosestPointEdge(
+                    (a.v, b.v),
+                    Vector3.zero
+                );
+
+                V.v = v2 - v1;
+                return false;
+            }
+            else if(state == VectorHeader.Barycentric2DState.TOP) {
+                splx.Clear();
+                splx.Add(a);
+
+                D = a.v;
+                V.v = a.v;
+
+                return false;
+            }
+        }
+        // } else {
+            V.v = Vector3.zero;
+            return true;
+        // }
+
+    //     if(Same(abc, ao)) {
+    //         if(Same(acd, ao)) {
+    //             if(Same(adb, ao)) {
+    //                 // A
+    //                 splx.Clear();
+    //                 splx.Add(a);
+    //                 D = ao;
+    //                 V.v = a.v;
+
+    //                 return false;
+    //             } else {
+    //                 //AC
+    //                 splx.Clear();
+    //                 splx.Add(a);
+    //                 splx.Add(c);
+    //                 D = Vector3.Cross(Vector3.Cross(c.v - a.v, ao), c.v - a.v);
+                    
+    //                 var (v1, v2) = VectorHeader.ClosestPointEdge(
+    //                     (a.v, c.v),
+    //                     Vector3.zero
+    //                 );
+    //                 V.v = v2 - v1;
+
+    //                 return false;
+    //             }
+    //         } else {
+    //             if(Same(adb, ao)) {
+    //                 // AB
+    //                 splx.Clear();
+    //                 splx.Add(a);
+    //                 splx.Add(b);
+    //                 D = Vector3.Cross(Vector3.Cross(b.v - a.v, ao), b.v - a.v);
+
+    //                 var (v1, v2) = VectorHeader.ClosestPointEdge(
+    //                     (a.v, b.v),
+    //                     Vector3.zero
+    //                 );
+    //                 V.v = v2 - v1;
+
+    //                 return false;
+    //             } else {
+    //                 // ABC
+    //                 splx.Clear();
+    //                 splx.Add(a);
+    //                 splx.Add(b);
+    //                 splx.Add(c);
+    //                 D = abc;
+
+    //                 var(v1, v2) = VectorHeader.ClosestPointTriangle(
+    //                     (a.v, b.v, c.v),
+    //                     Vector3.zero
+    //                 );
+
+    //                 V.v = v2 - v1;
+
+    //                 return false;
+    //             }
+    //         }
+    //     } else {
+    //         if(Same(acd, ao)) {
+                
+    //             if(Same(adb, ao)) {
+                    
+    //                 // AD
+    //                 splx.Clear();
+    //                 splx.Add(a);
+    //                 splx.Add(d);
+    //                 D = Vector3.Cross(Vector3.Cross(d.v - a.v, ao), d.v - a.v);
+
+    //                 var (v1, v2) = VectorHeader.ClosestPointEdge(
+    //                     (a.v, d.v),
+    //                     Vector3.zero
+    //                 );
+    //                 V.v = v2 - v1;
+    //                 // if(count == stopat) {
+    //                 //     Debug.Log("OK " + count);
+    //                 // }
+
+    //                 return false;
+    //             } else {
+    //                 // ACD
+    //                 splx.Clear();
+    //                 splx.Add(a);
+    //                 splx.Add(c);
+    //                 splx.Add(d);
+    //                 D = acd;
+
+    //                 var(v1, v2) = VectorHeader.ClosestPointTriangle(
+    //                     (a.v, c.v, d.v),
+    //                     Vector3.zero
+    //                 );
+    //                 V.v = v2 - v1;
+                    
+    //                 return false;
+    //             }
+    //         } else {
+    //             if(Same(adb, ao)) {
+    //                 // ADB
+    //                 splx.Clear();
+    //                 splx.Add(a);
+    //                 splx.Add(d);
+    //                 splx.Add(b);
+    //                 D = adb;
+    //                 var(v1, v2) = VectorHeader.ClosestPointTriangle(
+    //                     (a.v, d.v, b.v),
+    //                     Vector3.zero
+    //                 );
+    //                 V.v = v2 - v1;
+    //                 return false;
+    //             }
+    //             else {
+    //                 V.v = Vector3.zero;
+    //                 return true;
+    //             }
+    //         }
+    //     }
     }
     
     public static MinkowskiVertex Support(
