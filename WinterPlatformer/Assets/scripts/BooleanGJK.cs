@@ -167,6 +167,7 @@ public class BooleanGJK {
                         Gizmos.DrawWireSphere(splx[0].b, .125F);
                         Gizmos.DrawWireSphere(splx[1].b, .125F);
                         Gizmos.DrawWireSphere(Vertex.b, .125F);
+                        Gizmos.DrawLine(_p3, _p4);
                     break;
                     case 3:
                         // triangle containing new vertex
@@ -190,6 +191,7 @@ public class BooleanGJK {
 
                         Gizmos.DrawWireSphere(Vertex.a, .125F);
                         Gizmos.DrawWireSphere(Vertex.b, .125F);
+                        Gizmos.DrawLine(_p1, _p2);
                     break;
                     case 4:
                         // tetrahedron containing new vertex

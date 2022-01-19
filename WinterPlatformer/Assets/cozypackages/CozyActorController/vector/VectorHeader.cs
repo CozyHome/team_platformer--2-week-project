@@ -302,7 +302,10 @@ namespace com.cozyhome.Vectors
             
             // edge regions
             if(Same(ao, ab) && Same(ao, ab_n)) {
-                return Bary(tri.a + VectorHeader.ProjectVector(ao, ab.normalized));
+                if(Same(bo, bc))
+                    return Bary(tri.b + VectorHeader.ProjectVector(bo, bc.normalized));
+                else
+                    return Bary(tri.a + VectorHeader.ProjectVector(ao, ab.normalized));
             }
             else if(Same(bo, bc) && Same(bo, bc_n)) {
                 return Bary(tri.b + VectorHeader.ProjectVector(bo, bc.normalized));
