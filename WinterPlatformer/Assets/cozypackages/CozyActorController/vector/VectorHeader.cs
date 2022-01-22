@@ -142,78 +142,29 @@ namespace com.cozyhome.Vectors
         (Vector3 a, Vector3 b, Vector3 c) tri,
             Vector3 p) {
 
-            Vector3 ao = p - tri.a;
-            Vector3 bo = p - tri.b;
-            Vector3 co = p - tri.c;
-            
-            Vector3 ab = tri.b - tri.a;
-            Vector3 bc = tri.c - tri.b;
-            Vector3 ca = tri.a - tri.c;  
-
-            Vector3 abc  = Vector3.Cross(ab, bc);
-            Vector3 ab_n = Vector3.Cross(ab, abc);
-            Vector3 bc_n = Vector3.Cross(bc, abc);
-            Vector3 ca_n = Vector3.Cross(ca, abc);
-
-            bool Same(Vector3 v1, Vector3 v2) {
-                return VectorHeader.Dot(v1, v2) > 0;
-            };
-            
-            // vertex regions
-            if(Same(ao, ca) && !Same(ao, ab)) {
-                return (p, tri.a);
-            }
-            else if(Same(bo, ab) && !Same(bo, bc)) {
-                return (p, tri.b);
-            }
-            else if(Same(co, bc) && !Same(co, ca)) {
-                return (p, tri.c);
-            }
-            
-            // edge regions
-            if(Same(ab_n, ao)) {
-                // isolate vertex b
-                if(Same(ao, ab) && Same(bo, ab))
-                    return (p, tri.b);
-                else if(!Same(ao, ab) && !Same(bo, ab))
-                    return (p, tri.a); // vert a
-                else // vert ab
-                    return (p, p - VectorHeader.ProjectVector(ao, ab_n.normalized));
-            }
-            else if(Same(bc_n, bo)) {
-                // isolate vertex c
-                if(Same(bo, bc) && Same(co, bc))
-                    return (p, tri.c);
-                else if(!Same(bo, bc) && !Same(co, bc)) // isolate vertex b
-                    return (p, tri.b);
-                else
-                    return (p, p - VectorHeader.ProjectVector(bo, bc_n.normalized));
-            }
-            else if(Same(ca_n, co)) {
-                if(Same(ao, ca) && Same(co, ca))
-                    return (p, tri.a);
-                else if(!Same(ao, ca) && !Same(co, ca))
-                    return (p, tri.c);
-                else 
-                    return (p, p - VectorHeader.ProjectVector(co, ca_n.normalized));
-            }
-            else
-                return (p, p - VectorHeader.ProjectVector(co, abc.normalized));
-        } 
-
+            var a = VectorHeader.Barycentric2DClamped(tri, p);
+            return (p ,tri.a * a[0] + tri.b * a[1] + tri.c * a[2]);
+        }
         public static (Vector3 a, Vector3 b) ClosestPointEdge(
         (Vector3 a, Vector3 b) edge,
         Vector3 p) {
-            // bool Same(Vector3 v1, Vector3 v2) {
-            //     return VectorHeader.Dot(v1, v2) > 0;
-            // };
             
             Vector3 ao = p - edge.a;
             Vector3 bo = p - edge.b;
             Vector3 ab = edge.b - edge.a;
             Vector3 abo = Vector3.Cross(ao, bo);
+
+            float am = ab.magnitude;
+            ab /= am;
+
+            float v = VectorHeader.Dot(p - edge.a, ab);
             
-            return (p, edge.a + ab * Mathf.Clamp01(VectorHeader.Dot(p - edge.a, Vector3.Cross(abo, ab).normalized)));
+            if(v > am)
+                return (p, edge.b);
+            else if(v <= 0F)
+                return (p, edge.a);
+            else
+                return (p, edge.a + ab * v);
         }
 
         public static float Barycentric1DClamped(
@@ -221,33 +172,28 @@ namespace com.cozyhome.Vectors
         Vector3 p) {
             
             Vector3 ao = p - edge.a;
-            Vector3 bo = p - edge.b;
             Vector3 ab = edge.b - edge.a;
-            Vector3 abo = Vector3.Cross(ao, bo);
-            
-            return Mathf.Clamp01(VectorHeader.Dot(p - edge.a, Vector3.Cross(abo, ab).normalized));
+            float   am = ab.magnitude;
+            ab /= (am > 0) ? am : 1; 
+
+            // REFACTOR THIS, A SIMPLE PROJECTION WILL SUFFICE
+            return Mathf.Clamp01(VectorHeader.Dot(p - edge.a, ab / am));
         }
 
         public static Vector3 Barycentric2D(
         (Vector3 a, Vector3 b, Vector3 c) tri,
             Vector3 p) {
 
-            Vector3 ao = p - tri.a;
-            Vector3 bo = p - tri.b;
-            Vector3 co = p - tri.c;
-            
-            Vector3 ab = tri.b - tri.a;
-            Vector3 bc = tri.c - tri.b;
-            Vector3 ca = tri.a - tri.c;  
-
-            Vector3 abc  = Vector3.Cross(ab, bc);
+            Vector3 abc  = Vector3.Cross(tri.b - tri.a, tri.c - tri.b);
             float area = abc.magnitude;
             abc /= area;
 
             Vector3 v = new Vector3(
-            Vector3.Dot(Vector3.Cross(p - tri.b, tri.c - p), abc) / area, // 0 -> ab x ao oab
-            Vector3.Dot(Vector3.Cross(p - tri.c, tri.a - p), abc) / area, // 1 -> bc x bo obc
-            0F);
+                Vector3.Dot(Vector3.Cross(p - tri.b, tri.c - p), abc) / area, // 0 -> ab x ao oab
+                Vector3.Dot(Vector3.Cross(p - tri.c, tri.a - p), abc) / area, // 1 -> bc x bo obc
+                0F
+            );
+            
             v[2] = 1 - v[0] - v[1];  // 2 -> ca x co oca
             return v;
             
@@ -257,21 +203,13 @@ namespace com.cozyhome.Vectors
         (Vector3 a, Vector3 b, Vector3 c) tri,
             Vector3 p) {
 
-            Vector3 ao = p - tri.a;
-            Vector3 bo = p - tri.b;
-            Vector3 co = p - tri.c;
-            
-            Vector3 ab = tri.b - tri.a;
-            Vector3 bc = tri.c - tri.b;
-            Vector3 ca = tri.a - tri.c;  
-
-            Vector3 abc  = Vector3.Cross(ab, ca);
+            Vector3 abc  = Vector3.Cross(tri.c - tri.a, tri.b - tri.a);
             float area = abc.magnitude;
             abc /= area;
 
-            Vector3 ab_n = Vector3.Cross(abc, ab);
-            Vector3 bc_n = Vector3.Cross(abc, bc);
-            Vector3 ca_n = Vector3.Cross(abc, ca);
+            Vector3 ab_n = Vector3.Cross(abc, tri.b - tri.a);
+            Vector3 bc_n = Vector3.Cross(abc, tri.c - tri.b);
+            Vector3 ca_n = Vector3.Cross(abc, tri.a - tri.c);
             
             bool Same(Vector3 v1, Vector3 v2) {
                 return VectorHeader.Dot(v1, v2) > 0;
@@ -286,139 +224,180 @@ namespace com.cozyhome.Vectors
                 return v;
             }
 
-            // hierarchy:
-                // normals
-                    // verts
-                        // edges
-            // Vector3 v = Bary(p);
-            
-            if(Same(ab_n, bo) && Same(bc_n, bo)) {
-                if(Same(bo, bc))
-                    return Bary(p - VectorHeader.ProjectVector(bo, bc_n.normalized));
-                else if(!Same(bo, ab))
-                    return Bary(p - VectorHeader.ProjectVector(bo, ab_n.normalized));
+            int ComputeSignedAreas(Vector3 p) {
+                int nflags = 0;
+                nflags |= Same(p - tri.a, ab_n) ? (1 << 0) : 0; // AB
+                nflags |= Same(p - tri.b, bc_n) ? (1 << 1) : 0; // AB
+                nflags |= Same(p - tri.c, ca_n) ? (1 << 2) : 0; // AB
+                return nflags;
             }
 
-            if(Same(ab_n, ao) && Same(ca_n, ao)) {
-                if(!Same(ca, ao))
-                    return Bary(p - VectorHeader.ProjectVector(ao, ca_n.normalized));
-                else if(Same(ab, ao))
-                    return Bary(p - VectorHeader.ProjectVector(ao, ab_n.normalized));
+            Vector3 DualEdges((Vector3 x, Vector3 y, Vector3 z) pm) {
+                // dual edges will serve as a permuted form of the triangle
+                // xy, zy edges will be constructed for sign analysis
+                Vector3 xy = pm.y - pm.x;
+                Vector3 zy = pm.y - pm.z;
+
+                Vector3 yp = p    - pm.y;
+                Vector3 xp = p    - pm.x;
+                Vector3 zp = p    - pm.z;
+
+                Vector3 zxy = Vector3.Cross(zy, xy);
+
+                Vector3 xy_n = Vector3.Cross(xy, zxy);
+                Vector3 zy_n = Vector3.Cross(zxy, zy);
+                
+                if(Same(yp, zy) && Same(yp, xy))
+                    return Bary(pm.y);
+
+                if(!Same(yp, xy)) {
+                    if(!Same(xp, xy))
+                        return Bary(pm.x);
+                    else
+                        return Bary(p - VectorHeader.ProjectVector(yp, xy_n.normalized));
+                }
+
+                if(!Same(yp, zy)) {
+                    if(!Same(zp, zy))
+                        return Bary(pm.z);
+                    else
+                        return Bary(p - VectorHeader.ProjectVector(yp, zy_n.normalized));
+                }
+
+                return Vector3.zero;
             }
 
-            if(Same(bc_n, co) && Same(ca_n, co)) {
-                if(Same(co, ca))
-                    return Bary(p - VectorHeader.ProjectVector(co, ca_n.normalized));
-                else if(!Same(co, bc))
-                    return Bary(p - VectorHeader.ProjectVector(co, bc_n.normalized));
+            Vector3 Edge((Vector3 x, Vector3 y) pm) {
+                Vector3 xy = pm.y - pm.x;
+                Vector3 yp = p    - pm.y;
+                Vector3 xp = p    - pm.x;
+
+                if(Same(xy, yp) && Same(xy, xp))
+                    return Bary(pm.y);
+                
+                if(!Same(xy, yp) && !Same(xy, xp))
+                    return Bary(pm.x);
+
+                return Bary(pm.x + VectorHeader.ProjectVector(xp, xy.normalized));
             }
 
-            // return v;
-            if(Same(ab_n, ao)) {
-                // isolate vertex b
-                if(Same(ao, ab) && Same(bo, ab))
-                    return Bary(tri.b);
-                else if(!Same(ao, ab) && !Same(bo, ab))
-                    return Bary(tri.a); // vert a
-                else // vert ab
-                    return Bary(p - VectorHeader.ProjectVector(ao, ab_n.normalized));
+            // ALGORITHM
+            // DETERMINE THE NUMBER OF POSITIVE SIGNED PROJECTIONS ALONG EDGE PLANES 
+            // IF PLANE COUNT IS TWO: (NFLAGS, NCOUNT)
+            // -----> DETERMINE ORIENTATION OF THE THREE EDGE VERTICES VIA BITS 
+            //      ------> COMPUTE VORONOI REGION VIA THESE TWO EDGES
+            // ELIF PLANE COUNT IS ONE: (NFLAGS, NCOUNT) (RUN BARYCENTRIC)
+            // ------> DETERMINE ORIENTATION OF THE TWO EDGE VERTICES VIA BITS
+            //      ------> COMPUTE VORONOI REGION VIA SINGULAR EDGE (RUN BARYCENTRIC)
+            //
+            //
+
+            switch(ComputeSignedAreas(p)) { 
+                case 1: // AB
+                    return Edge((tri.a, tri.b));
+                case 2: // BC
+                    return Edge((tri.b, tri.c));
+                case 3: // AB & BC (ABC)
+                    return DualEdges((tri.a, tri.b, tri.c));
+                case 4: // CA
+                    return Edge((tri.c, tri.a));
+                case 5: // CA & AB (CAB)
+                    return DualEdges((tri.c, tri.a, tri.b));
+                case 6: // CA & BC (BCA)
+                    return DualEdges((tri.b, tri.c, tri.a));
+                default:
+                    return Bary(p);
             }
-            else if(Same(bc_n, bo)) {
-                // isolate vertex c
-                if(Same(bo, bc) && Same(co, bc))
-                    return Bary(tri.c);
-                else if(!Same(bo, bc) && !Same(co, bc)) // isolate vertex b
-                    return Bary(tri.b);
-                else
-                    return Bary(p - VectorHeader.ProjectVector(bo, bc_n.normalized));
-            }
-            else if(Same(ca_n, co)) {
-                if(Same(ao, ca) && Same(co, ca))
-                    return Bary(tri.a);
-                else if(!Same(ao, ca) && !Same(co, ca))
-                    return Bary(tri.c);
-                else 
-                    return Bary(p - VectorHeader.ProjectVector(co, ca_n.normalized));
-            }
-            else
-                return Bary(p);
         }
 
-        public enum Barycentric2DState {
-            TOP,
-            LEFTBOT,
-            RIGHTBOT,
-            LEFT,
-            BOT,
-            RIGHT,
-            IN
-        };
-
-        public static Barycentric2DState Barycentric2DVoronoi(
+        public static int Barycentric2DVoronoi(
         (Vector3 a, Vector3 b, Vector3 c) tri,
             Vector3 p) {
-
-            Vector3 ao = p - tri.a;
-            Vector3 bo = p - tri.b;
-            Vector3 co = p - tri.c;
+            Vector3 abc  = Vector3.Cross(tri.c - tri.a, tri.b - tri.a);
             
-            Vector3 ab = tri.b - tri.a;
-            Vector3 bc = tri.c - tri.b;
-            Vector3 ca = tri.a - tri.c;  
-
-            Vector3 abc  = Vector3.Cross(ab, ca);
-            float area = abc.magnitude;
-            abc /= area;
-
-            Vector3 ab_n = Vector3.Cross(abc, ab);
-            Vector3 bc_n = Vector3.Cross(abc, bc);
-            Vector3 ca_n = Vector3.Cross(abc, ca);
+            Vector3 ab_n = Vector3.Cross(abc, tri.b - tri.a);
+            Vector3 bc_n = Vector3.Cross(abc, tri.c - tri.b);
+            Vector3 ca_n = Vector3.Cross(abc, tri.a - tri.c);
             
             bool Same(Vector3 v1, Vector3 v2) {
                 return VectorHeader.Dot(v1, v2) > 0;
             };
             
-            // Vector3 Bary(Vector3 p) {
-            //     Vector3 v = new Vector3(
-            //     Vector3.Dot(Vector3.Cross(p - tri.b, tri.c - p), abc) / area, // 0 -> ab x ao oab
-            //     Vector3.Dot(Vector3.Cross(p - tri.c, tri.a - p), abc) / area, // 1 -> bc x bo obc
-            //     0F);
-            //     v[2] = 1 - v[0] - v[1];  // 2 -> ca x co oca
-            //     return v;
-            // }
+            int ComputeSignedAreas(Vector3 p) {
+                int nflags = 0;
+                nflags |= Same(p - tri.a, ab_n) ? (1 << 0) : 0; // AB
+                nflags |= Same(p - tri.b, bc_n) ? (1 << 1) : 0; // AB
+                nflags |= Same(p - tri.c, ca_n) ? (1 << 2) : 0; // AB
+                return nflags;
+            }
 
-            // hierarchy:
-                // normals
-                    // verts
-                        // edges
-            if(Same(ab_n, ao) ^ Same(ab_n, ao)) {
-                // isolate vertex b
-                if(Same(ao, ab) && Same(bo, ab))
-                    return Barycentric2DState.LEFTBOT; //Bary(tri.b);
-                else if(!Same(ao, ab) && !Same(bo, ab))
-                    return Barycentric2DState.TOP; // Bary(tri.a); // vert a
-                else // vert ab
-                    return Barycentric2DState.LEFT; // Bary(p - VectorHeader.ProjectVector(ao, ab_n.normalized));
+            int DualEdges((Vector3 x, Vector3 y, Vector3 z) pm,
+                          (int     x, int     y,     int z) bits) {
+                // dual edges will serve as a permuted form of the triangle
+                // xy, zy edges will be constructed for sign analysis
+                Vector3 xy = pm.y - pm.x;
+                Vector3 zy = pm.y - pm.z;
+
+                Vector3 yp = p    - pm.y;
+                Vector3 xp = p    - pm.x;
+                Vector3 zp = p    - pm.z;
+
+                Vector3 zxy = Vector3.Cross(zy, xy);
+
+                Vector3 xy_n = Vector3.Cross(xy, zxy);
+                Vector3 zy_n = Vector3.Cross(zxy, zy);
+                
+                if(Same(yp, zy) && Same(yp, xy))
+                    return bits.y;
+
+                if(!Same(yp, xy)) {
+                    if(!Same(xp, xy))
+                        return bits.x;
+                    else
+                        return bits.x | bits.y;
+                }
+
+                if(!Same(yp, zy)) {
+                    if(!Same(zp, zy))
+                        return bits.z;
+                    else
+                        return bits.y | bits.z;
+                }
+
+                return bits.x | bits.y | bits.z;
             }
-            else if(Same(bc_n, bo)) {
-                // isolate vertex c
-                if(Same(bo, bc) && Same(co, bc))
-                    return Barycentric2DState.RIGHTBOT; //Bary(tri.c);
-                else if(!Same(bo, bc) && !Same(co, bc)) // isolate vertex b
-                    return Barycentric2DState.LEFTBOT; // Bary(tri.b);
-                else
-                    return Barycentric2DState.BOT; // Bary(p - VectorHeader.ProjectVector(bo, bc_n.normalized));
+
+            int Edge((Vector3 x, Vector3 y) pm, 
+                     (int     x, int     y) bits) {
+                Vector3 xy = pm.y - pm.x;
+                Vector3 yp = p    - pm.y;
+                Vector3 xp = p    - pm.x;
+
+                if(Same(xy, yp) && Same(xy, xp))
+                    return bits.y;
+                
+                if(!Same(xy, yp) && !Same(xy, xp))
+                    return bits.x;
+
+                return bits.x | bits.y;
             }
-            else if(Same(ca_n, co)) {
-                if(Same(ao, ca) && Same(co, ca))
-                    return Barycentric2DState.TOP; // Bary(tri.a);
-                else if(!Same(ao, ca) && !Same(co, ca))
-                    return Barycentric2DState.RIGHTBOT; // Bary(tri.c);
-                else 
-                    return Barycentric2DState.RIGHT; // Bary(p - VectorHeader.ProjectVector(co, ca_n.normalized));
-            }
-            else
-                return Barycentric2DState.IN; // Bary(p);
+
+            switch(ComputeSignedAreas(p)) { 
+                case 1: // AB
+                    return Edge((tri.a, tri.b), (0x1, 0x2));
+                case 2: // BC
+                    return Edge((tri.b, tri.c) , (0x2, 0x4));
+                case 3: // AB & BC (ABC)
+                    return DualEdges((tri.a, tri.b, tri.c), (0x1, 0x2, 0x4));
+                case 4: // CA
+                    return Edge((tri.c, tri.a), (0x4, 0x1));
+                case 5: // CA & AB (CAB)
+                    return DualEdges((tri.c, tri.a, tri.b), (0x4, 0x1, 0x2));
+                case 6: // CA & BC (BCA)
+                    return DualEdges((tri.b, tri.c, tri.a), (0x2, 0x4, 0x1));
+                default:
+                    return 0;
+            }        
         }
     }
 }

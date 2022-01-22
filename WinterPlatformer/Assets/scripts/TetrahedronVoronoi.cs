@@ -32,6 +32,13 @@ public class TetrahedronVoronoi : MonoBehaviour
         Vector3 abd = Vector3.Cross(d - a, b - a);
         Vector3 acd = Vector3.Cross(c - a, d - a);
 
+        Vector3 bcd = Vector3.Cross(d - b, c - b);
+
+        acb.Normalize();
+        abd.Normalize();
+        acd.Normalize();
+        bcd.Normalize();
+
         Gizmos.color = Color.red;
         Gizmos.DrawLine(b, c);
         Gizmos.DrawLine(c, d);
@@ -41,7 +48,25 @@ public class TetrahedronVoronoi : MonoBehaviour
         Gizmos.DrawLine(a, c);
         Gizmos.DrawLine(a, d);
 
-        Gizmos.color = Color.black;
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawRay(a, acb);
+        Gizmos.DrawRay(b, acb);
+        Gizmos.DrawRay(c, acb);
+
+        Gizmos.color = Color.white;
+        Gizmos.DrawRay(a, abd);
+        Gizmos.DrawRay(b, abd);
+        Gizmos.DrawRay(d, abd);
+
+        Gizmos.color = Color.magenta;
+        Gizmos.DrawRay(a, acd);
+        Gizmos.DrawRay(c, acd);
+        Gizmos.DrawRay(d, acd);
+
+        Gizmos.color = Color.green;
+        Gizmos.DrawRay(b, bcd);
+        Gizmos.DrawRay(c, bcd);
+        Gizmos.DrawRay(d, bcd);
 
         Gizmos.DrawWireSphere(a, .125F);
         Gizmos.DrawWireSphere(b, .125F);

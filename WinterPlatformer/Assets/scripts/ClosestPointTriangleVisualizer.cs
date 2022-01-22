@@ -38,17 +38,10 @@ public class ClosestPointTriangleVisualizer : MonoBehaviour
             o
         );
         
-        Vector3 bary = VectorHeader.Barycentric2DClamped(
-            (a, b, c),
-            o
-        );
-
-        Gizmos.DrawLine(
-            a * bary[0] + b * bary[1] + c * bary[2],
-            o
-        );
-
-        Debug.Log(bary);
+        Vector3 bary = VectorHeader.Barycentric2DClamped((a, b, c), o);
+        // returns bitstring detailing which region we are in
+        int s = VectorHeader.Barycentric2DVoronoi((a, b, c), o);
+        Debug.Log(s);
 
         Gizmos.color = Color.red;
         Gizmos.DrawLine(a, b);
@@ -56,7 +49,7 @@ public class ClosestPointTriangleVisualizer : MonoBehaviour
         Gizmos.DrawLine(c, a);
 
         Gizmos.color = Color.green;
-        // Gizmos.DrawLine(query.a, query.b);
+        Gizmos.DrawLine(query.a, query.b);
 
         // Draw();
     }   
