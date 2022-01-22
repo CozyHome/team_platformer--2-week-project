@@ -53,10 +53,10 @@ public class VoronoiRegionTetrahedron : MonoBehaviour
         Vector3 acd = Vector3.Cross(c - a, d - c);
         Vector3 abc = Vector3.Cross(b - a, c - b);
         Vector3 cbd = Vector3.Cross(b - c, d - b);
-        adb.Normalize();
-        acd.Normalize();
-        abc.Normalize();
-        cbd.Normalize();
+        // adb.Normalize();
+        // acd.Normalize();
+        // abc.Normalize();
+        // cbd.Normalize();
 
         // Gizmos.DrawRay(a, adb);
         // Gizmos.DrawRay(a, acd);
@@ -77,13 +77,70 @@ public class VoronoiRegionTetrahedron : MonoBehaviour
         void TripleEdges((Vector3 x, Vector3 y, Vector3 z, Vector3 w) tet, Vector3 p) {
             Gizmos.color = Color.red;
             Gizmos.DrawRay(tet.x, (tet.x - tet.y).normalized);
+            Gizmos.color = Color.blue;
             Gizmos.DrawRay(tet.x, (tet.x - tet.z).normalized);
+            Gizmos.color = Color.green;
             Gizmos.DrawRay(tet.x, (tet.x - tet.w).normalized);
 
-            bool check1 = Same(o - tet.x, tet.x - tet.y);
-            bool check2 = Same(o - tet.x, tet.x - tet.z);
-            bool check3 = Same(o - tet.x, tet.x - tet.w);
-            Debug.Log(check1 + " " + check2 + " " + check3);
+            int nflags = 0;
+            nflags |= Same(o - tet.x, tet.x - tet.y) ? (1 << 0) : 0;
+            nflags |= Same(o - tet.x, tet.x - tet.z) ? (1 << 1) : 0;
+            nflags |= Same(o - tet.x, tet.x - tet.w) ? (1 << 2) : 0;
+        
+            switch(nflags) {
+                case 1: // red
+                    Gizmos.DrawLine(o, VectorHeader.ClosestPointTriangle((tet.x, tet.w, tet.z), o).b);
+                break;
+                case 2: // blue
+                    Gizmos.DrawLine(o, VectorHeader.ClosestPointTriangle((tet.y, tet.w, tet.x), o).b);
+                break;
+                case 3: // red and blue
+                    Vector3 xyw = Vector3.Cross(tet.x - tet.w, Vector3.Cross(tet.x - tet.w, tet.x - tet.y));
+                    if(Same(o - tet.x, xyw)) {
+                        Gizmos.DrawLine(o,
+                            VectorHeader.ClosestPointTriangle((tet.y, tet.w, tet.x), o).b
+                        );
+                    }
+                    else {
+                        Gizmos.DrawLine(o,
+                            VectorHeader.ClosestPointTriangle((tet.x, tet.w, tet.z), o).b
+                        );
+                    }
+                break;
+                case 4: // green
+                    Gizmos.DrawLine(o, VectorHeader.ClosestPointTriangle((tet.x, tet.z, tet.y), o).b);
+                break;
+                case 5: // red and green
+                    Vector3 xzw = Vector3.Cross(tet.z - tet.x, Vector3.Cross(tet.x - tet.z, tet.x - tet.w));
+                    if(Same(o - tet.x, xzw)) {
+                        Gizmos.DrawLine(o,
+                            VectorHeader.ClosestPointTriangle((tet.y, tet.x, tet.z), o).b
+                        );
+                    }
+                    else {
+                        Gizmos.DrawLine(o,
+                            VectorHeader.ClosestPointTriangle((tet.x, tet.w, tet.z), o).b
+                        );
+                    }
+                break;
+                case 6: // blue and green
+                    Vector3 ywx = Vector3.Cross(tet.y - tet.x, Vector3.Cross(tet.x - tet.z, tet.y - tet.x));
+                    if(Same(o - tet.x, ywx)) {
+                        Gizmos.DrawLine(o,
+                            VectorHeader.ClosestPointTriangle((tet.y, tet.w, tet.x), o).b
+                        );
+                    }
+                    else {
+                        Gizmos.DrawLine(o,
+                            VectorHeader.ClosestPointTriangle((tet.y, tet.x, tet.z), o).b
+                        );
+                    }
+                break;
+                case 7: // red blue green
+                    Gizmos.DrawLine(o, tet.x);
+                break;
+            }
+            Debug.Log(nflags);
         }
 
         void SingleEdges((Vector3 x, Vector3 y, Vector3 z) tet, Vector3 p) {
@@ -135,6 +192,32 @@ public class VoronoiRegionTetrahedron : MonoBehaviour
             // Gizmos.DrawRay(tet.y, tet.y - tet.z);
         }
 
+        // float volume = Vector3.Dot(a - b, cbd);
+        // // Debug.Log(volume);
+
+        // Vector4 bary = new Vector4(
+        //     Vector3.Dot(cbd, o - c) / volume,
+        //     Vector3.Dot(acd, o - d) / volume,
+        //     Vector3.Dot(adb, o - b) / volume,
+        //     0F
+        // );
+        // bary[3] = 1 - bary[0] - bary[1] - bary[2];
+        // Debug.Log(bary);
+        // Gizmos.DrawLine(
+        //     Vector3.zero,
+        //     a * bary[0] + b * bary[1] + c * bary[2] + d * bary[3]
+        // );
+
+        // int ComputeBarySign(Vector3 bary) {
+        //     int nflags = 0;
+        //     nflags |= (bary[0] > 0) ? (1 << 0) : 0;
+        //     nflags |= (bary[1] > 0) ? (1 << 1) : 0;
+        //     nflags |= (bary[2] > 0) ? (1 << 2) : 0;
+        //     nflags |= (bary[3] > 0) ? (1 << 3) : 0;
+        //     return nflags;
+        // }
+        // return;
+
         int ComputeSignBits(Vector3 p) {
             int nflags = 0;
             nflags |= VectorHeader.Dot(o - b, adb) > 0 ? (1 << 0) : 0;
@@ -145,7 +228,7 @@ public class VoronoiRegionTetrahedron : MonoBehaviour
         }
 
         int v = ComputeSignBits(o);
-        Debug.Log(v);
+        // Debug.Log(v);
         switch (v) {
             case 0: // INNER
             break;
