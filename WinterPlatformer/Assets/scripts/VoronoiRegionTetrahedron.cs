@@ -20,17 +20,17 @@ public class VoronoiRegionTetrahedron : MonoBehaviour
         Gizmos.color  = Color.white;
 
         // Draw();
-        Vector4 bary = VectorHeader.Barycentric3DClamped(
+        (int reg, Vector4 bary) = VectorHeader.Barycentric3D_GJK(
             (a_t.position, b_t.position, c_t.position, d_t.position),
             o_t.position
         );
         
-        int region = VectorHeader.Barycentric3DVoronoi(
-            (a_t.position, b_t.position, c_t.position, d_t.position),
-            o_t.position
-        );
+        // int region = VectorHeader.Barycentric3DVoronoi(
+        //     (a_t.position, b_t.position, c_t.position, d_t.position),
+        //     o_t.position
+        // );
 
-        // Debug.Log(region);
+        Debug.Log(reg);
 
         Gizmos.color = Color.white;
         Gizmos.DrawLine(a_t.position, b_t.position);

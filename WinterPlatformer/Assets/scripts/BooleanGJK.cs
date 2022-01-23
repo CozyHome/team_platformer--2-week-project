@@ -2,9 +2,7 @@ using System.Collections.Generic;
 using com.cozyhome.Vectors;
 using UnityEngine;
 
-public class BooleanGJK {
-
-    public struct ConvexPolyhedron {
+public struct ConvexPolyhedron {
         private Vector3[] points;
         private Matrix4x4 m;
 
@@ -32,10 +30,6 @@ public class BooleanGJK {
         }
 
         public Vector3 Origin => m.GetColumn(3);
-    }
-
-    public static bool Same(Vector3 v1, Vector3 v2) {
-        return VectorHeader.Dot(v1, v2) > 0;
     }
 
     public struct MinkowskiVertex {
@@ -129,6 +123,13 @@ public class BooleanGJK {
         }
 
         public int Count => count;
+    }
+
+public class BooleanGJK {
+
+    
+    public static bool Same(Vector3 v1, Vector3 v2) {
+        return VectorHeader.Dot(v1, v2) > 0;
     }
 
     public enum GJKCASE {

@@ -38,7 +38,7 @@ public class TetrahedronVoronoi : MonoBehaviour
             b * bary[1] +
             c * bary[2] +
             d * bary[3]
-        );
+        );   
 
         Vector3 acb = Vector3.Cross(b - a, c - a);
         Vector3 abd = Vector3.Cross(d - a, b - a);

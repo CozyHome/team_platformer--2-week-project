@@ -2,8 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-[ExecuteAlways]
-public class GJKTester : MonoBehaviour
+public class GJKTesterTwo : MonoBehaviour
 {
     [SerializeField] private GameObject PolyhedronA;
     [SerializeField] private GameObject PolyhedronB;
@@ -20,10 +19,10 @@ public class GJKTester : MonoBehaviour
         if(PolyhedronA == null || PolyhedronB == null)
             return;
         else {
-            BooleanGJK.stopat = stopat;
+            DistanceGJK.stopat = stopat;
 
             // Run GJK
-            bool answer = BooleanGJK.GJK(
+            float answer = DistanceGJK.GJK(
                 new ConvexPolyhedron(
                     PolyhedronA.GetComponent<MeshCollider>().sharedMesh.vertices,
                     PolyhedronA.transform.localToWorldMatrix
@@ -32,10 +31,11 @@ public class GJKTester : MonoBehaviour
                     PolyhedronB.GetComponent<MeshCollider>().sharedMesh.vertices,
                     PolyhedronB.transform.localToWorldMatrix
                 )
-            ) == BooleanGJK.GJKCASE.INTERSECTING;
+            );
+            // Debug.Log("Distance: " + answer);
 
-            isColliding = answer;
-            Gizmos.color = answer ? Color.red : Color.green;
+            isColliding = answer < Vector3.kEpsilon;
+            Gizmos.color = isColliding ? Color.red : Color.green;
             Gizmos.matrix = PolyhedronA.transform.localToWorldMatrix;
             Gizmos.DrawWireMesh(
                 PolyhedronA.GetComponent<MeshCollider>().sharedMesh,
@@ -45,7 +45,7 @@ public class GJKTester : MonoBehaviour
                 Vector3.one
             );
 
-            Gizmos.color = answer ? Color.red : Color.blue;
+            Gizmos.color = isColliding ? Color.red : Color.blue;
             Gizmos.matrix = PolyhedronB.transform.localToWorldMatrix;
             Gizmos.DrawWireMesh(
                 PolyhedronB.GetComponent<MeshCollider>().sharedMesh,
