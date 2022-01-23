@@ -13,7 +13,7 @@ public class DistanceGJK
     public static int iteration = 0;
     public static float GJK(in ConvexPolyhedron a, in ConvexPolyhedron b) {
         GJKSimplex splx = new GJKSimplex();
-        const float eps = 0.05F;
+        const float eps = 0.0165F;
 
         float MaxSimplexNorm() {
             float _m = 0;
@@ -54,6 +54,7 @@ public class DistanceGJK
             {
                 DrawClosest(splx, v);
                 // Debug.Log("iterations : " + iteration + " " + splx.Count + " " + v.magnitude);
+                Debug.Log(iteration);
                 return v.magnitude;
             }
             else {
@@ -65,10 +66,14 @@ public class DistanceGJK
             // 2. Check Movement toward Origin (termination #2)
             // 3. DoSimplex() (termination #3)
 
-        } while(iteration++ < 100 && splx.Count < 4);
-        // && Vector3.Dot(v, v) > Vector3.kEpsilon * MaxSimplexNorm()
+            // if(iteration == stopat)
+            //     Debug.Log(Vector3.Dot(v, v) + " " + 1F * MaxSimplexNorm());
 
-        Debug.Log("converged @ : " + iteration);
+        } while(iteration++ < (a.Count + b.Count) && splx.Count < 4);
+        //
+
+        // Debug.Log("converged @ : " + iteration);
+        Debug.Log(iteration + " " + " converged outside");
         DrawClosest(splx, v);
         return v.magnitude; // we are intersecting
 
@@ -142,7 +147,7 @@ public class DistanceGJK
             Gizmos.DrawWireSphere(splx[0].v, 0.0625F);
             Gizmos.color = Color.yellow;
             Gizmos.DrawWireSphere(splx[1].v, 0.0625F);
-            Debug.Log(r + " " + splx[0].v + " " + splx[1].v);
+            // Debug.Log(r + " " + splx[0].v + " " + splx[1].v);
         }
 
         v = cv;
@@ -175,7 +180,7 @@ public class DistanceGJK
             Gizmos.DrawWireSphere(splx[1].v, 0.0625F);
             Gizmos.color = Color.blue;
             Gizmos.DrawWireSphere(splx[2].v, 0.0625F);
-            Debug.Log(r + " " + splx[0].v + " " + splx[1].v + " " + splx[2].v);
+            // Debug.Log(r + " " + splx[0].v + " " + splx[1].v + " " + splx[2].v);
         }
 
         v = cv;
@@ -197,12 +202,18 @@ public class DistanceGJK
             case 0x7:
                 // ABC (up/down does not matter here as (v - o) * -1 flips this)
                 splx.Clear();
-                if(Vector3.Dot(Vector3.zero - v, Vector3.Cross(splx[2].v - splx[0].v, splx[1].v - splx[0].v)) > 0) {
+                float signed_vol = Vector3.Dot(Vector3.zero - v, Vector3.Cross(splx[2].v - splx[0].v, splx[1].v - splx[0].v));
+                int sign = (int) Mathf.Sign(signed_vol);
+                if(sign == 1) {
                     splx.Add(c);
                     splx.Add(b);
                     splx.Add(a);
+                    // if(iteration == stopat)
+                    //     Debug.Log("IS " + " " + signed_vol);
                 }
                 else {
+                    // if(iteration == stopat)
+                    //     Debug.Log("IS NOT" + " " + signed_vol);
                     splx.Add(a);
                     splx.Add(b);
                     splx.Add(c);
@@ -239,7 +250,7 @@ public class DistanceGJK
             Gizmos.DrawWireSphere(splx[2].v, 0.0625F);
             Gizmos.color = Color.yellow;
             Gizmos.DrawWireSphere(splx[3].v, 0.0625F);
-            Debug.Log(r);
+            // Debug.Log(r);
         }
     
         v = cv;
@@ -275,9 +286,9 @@ public class DistanceGJK
             break;
             case 0x7: // ABC
                 splx.Clear();
-                splx.Add(a);
-                splx.Add(b);
                 splx.Add(c);
+                splx.Add(b);
+                splx.Add(a);
             break;
             case 0x8: // D
                 splx.Clear();
@@ -295,9 +306,9 @@ public class DistanceGJK
             break;
             case 11: // ABD
                 splx.Clear();
-                splx.Add(a);
-                splx.Add(b);
                 splx.Add(d);
+                splx.Add(b);
+                splx.Add(a);
             break;
             case 12: // CD
                 splx.Clear();

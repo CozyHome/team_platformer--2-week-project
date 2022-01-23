@@ -6,7 +6,7 @@ public struct ConvexPolyhedron {
         private Vector3[] points;
         private Matrix4x4 m;
 
-        public ConvexPolyhedron(Vector3[] points, Matrix4x4 t_m) {
+    public ConvexPolyhedron(Vector3[] points, Matrix4x4 t_m) {
             this.points = points;
             this.m = t_m;
         }
@@ -30,6 +30,7 @@ public struct ConvexPolyhedron {
         }
 
         public Vector3 Origin => m.GetColumn(3);
+        public int     Count  => points.Length;
     }
 
     public struct MinkowskiVertex {
