@@ -28,6 +28,18 @@ public class TetrahedronVoronoi : MonoBehaviour
         Vector3 d = d_t.position;
         Vector3 o = o_t.position;
 
+        Vector4 bary = VectorHeader.Barycentric3DClamped(
+            (a, b, c, d),
+            o
+        );
+        Gizmos.DrawLine(
+            Vector3.zero,
+            a * bary[0] + 
+            b * bary[1] +
+            c * bary[2] +
+            d * bary[3]
+        );
+
         Vector3 acb = Vector3.Cross(b - a, c - a);
         Vector3 abd = Vector3.Cross(d - a, b - a);
         Vector3 acd = Vector3.Cross(c - a, d - a);
