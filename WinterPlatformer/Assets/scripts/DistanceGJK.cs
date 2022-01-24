@@ -73,13 +73,13 @@ public class DistanceGJK
         //
 
         // Debug.Log("converged @ : " + iteration);
-        Debug.Log(iteration + " " + " converged outside");
+        Debug.Log(iteration + " " + splx.Count);
         DrawClosest(splx, v);
         return v.magnitude; // we are intersecting
 
         static void DrawClosest(GJKSimplex splx, Vector3 v)
         {
-            Gizmos.color = Color.red;
+            Gizmos.color = Color.yellow;
             switch (splx.Count)
             {
                 case 1:
@@ -99,6 +99,14 @@ public class DistanceGJK
                         (splx[0].b * bary[0] + splx[1].b * bary[1] + splx[2].b * bary[2])
                     );
                     break;
+                case 4:
+                    Vector4 vol = VectorHeader.Barycentric3DClamped((splx[0].v, splx[1].v, splx[2].v, splx[3].v), v);
+                    Gizmos.DrawWireSphere(
+                        (splx[0].a * vol[0] + splx[1].a * vol[1] + splx[2].a * vol[2] + splx[3].a * vol[3]),
+                        0.0625F
+                    );
+
+                break;
             }
             Gizmos.color = Color.white;
         }
