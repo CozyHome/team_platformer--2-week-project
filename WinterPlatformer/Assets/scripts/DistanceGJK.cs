@@ -13,7 +13,8 @@ public class DistanceGJK
     public static int iteration = 0;
     public static float GJK(in ConvexPolyhedron a, in ConvexPolyhedron b) {
         GJKSimplex splx = new GJKSimplex();
-        const float eps = 0.0165F;
+        // const float eps = 0.0165F;
+        const float eps = 0.001F;
 
         bool isDupe(MinkowskiVertex p) {
             for(int i = 0;i < splx.Count;i++) {
@@ -61,6 +62,8 @@ public class DistanceGJK
 
         static void DrawClosest(GJKSimplex splx, Vector3 v)
         {
+            Gizmos.color = Color.white;
+
             Gizmos.color = Color.yellow;
             switch (splx.Count)
             {
@@ -73,6 +76,13 @@ public class DistanceGJK
                         (splx[0].a * (1 - lambda) + splx[1].a * (lambda)),
                         (splx[0].b * (1 - lambda) + splx[1].b * (lambda))
                     );
+
+                    Gizmos.DrawWireSphere(splx[0].a, 0.125F);
+                    Gizmos.DrawWireSphere(splx[1].a, 0.125F);
+
+                    Gizmos.DrawWireSphere(splx[0].b, 0.125F);
+                    Gizmos.DrawWireSphere(splx[1].b, 0.125F);
+
                     break;
                 case 3:
                     Vector3 bary = VectorHeader.Barycentric2DClamped((splx[0].v, splx[1].v, splx[2].v), v);
@@ -80,6 +90,13 @@ public class DistanceGJK
                         (splx[0].a * bary[0] + splx[1].a * bary[1] + splx[2].a * bary[2]),
                         (splx[0].b * bary[0] + splx[1].b * bary[1] + splx[2].b * bary[2])
                     );
+                    Gizmos.DrawWireSphere(splx[0].a, 0.125F);
+                    Gizmos.DrawWireSphere(splx[1].a, 0.125F);
+                    Gizmos.DrawWireSphere(splx[2].a, 0.125F);
+                    
+                    Gizmos.DrawWireSphere(splx[0].b, 0.125F);
+                    Gizmos.DrawWireSphere(splx[1].b, 0.125F);
+                    Gizmos.DrawWireSphere(splx[2].b, 0.125F);
                     break;
                 case 4:
                     Vector4 vol = VectorHeader.Barycentric3DClamped((splx[0].v, splx[1].v, splx[2].v, splx[3].v), v);
