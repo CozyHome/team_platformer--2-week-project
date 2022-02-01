@@ -57,6 +57,7 @@ public class DistanceGJK
             // 3. DoSimplex() (termination #3)
         } while(iteration++ < (a.Count + b.Count) && splx.Count < 4);
 
+        Debug.Log(iteration);
         DrawClosest(splx, v);
         return v.magnitude; // we are intersecting
 
