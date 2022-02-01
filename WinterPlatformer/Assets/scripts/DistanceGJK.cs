@@ -15,13 +15,6 @@ public class DistanceGJK
         GJKSimplex splx = new GJKSimplex();
         const float eps = 0.0165F;
 
-        float MaxSimplexNorm() {
-            float _m = 0;
-            for(int i = 0;i < splx.Count;i++)
-                _m = (splx[i].v.sqrMagnitude > _m) ? splx[i].v.sqrMagnitude : _m;
-            return _m;
-        }
-
         bool isDupe(MinkowskiVertex p) {
             for(int i = 0;i < splx.Count;i++) {
                 if((p.v - splx[i].v).magnitude < eps)
@@ -39,7 +32,6 @@ public class DistanceGJK
         var v = a.Origin - b.Origin;
         iteration = 0;
 
-
         do {
             var d = -v;
             var A = a.Support(d);
@@ -47,14 +39,11 @@ public class DistanceGJK
             var W = new MinkowskiVertex(A, B, A - B);
 
             float v1 = Vector3.Dot(v, v);
-            // if(iteration == stopat)
-            //     Debug.Log(v1 - Vector3.Dot(W.v, v) + " " + eps * v1 + " " + v.magnitude);
             
             if (isDupe(W) || v1 - Vector3.Dot(W.v, v) < eps * v1)
             {
-                DrawClosest(splx, v);
-                // Debug.Log("iterations : " + iteration + " " + splx.Count + " " + v.magnitude);
                 Debug.Log(iteration);
+                DrawClosest(splx, v);
                 return v.magnitude;
             }
             else {
@@ -65,15 +54,8 @@ public class DistanceGJK
             // 1. Check Duplicates (termination #1)
             // 2. Check Movement toward Origin (termination #2)
             // 3. DoSimplex() (termination #3)
-
-            // if(iteration == stopat)
-            //     Debug.Log(Vector3.Dot(v, v) + " " + 1F * MaxSimplexNorm());
-
         } while(iteration++ < (a.Count + b.Count) && splx.Count < 4);
-        //
 
-        // Debug.Log("converged @ : " + iteration);
-        Debug.Log(iteration + " " + splx.Count);
         DrawClosest(splx, v);
         return v.magnitude; // we are intersecting
 
@@ -132,14 +114,14 @@ public class DistanceGJK
     }
 
     public static void Simplex0D(ref Vector3 v, ref GJKSimplex splx) { 
-        v = splx[0].v;
-
         if(iteration == stopat) {
             Gizmos.color = Color.magenta;
-            Gizmos.DrawWireSphere(v, 0.0625F);
+            Gizmos.DrawWireSphere(splx[0].v, 0.0625F);
             Gizmos.color = Color.white;
-            Gizmos.DrawLine(v, Vector3.zero);
+            Gizmos.DrawLine(splx[0].v, Vector3.zero);
         }
+
+        v = splx[0].v;
     }
 
     public static void Simplex1D(ref Vector3 v, ref GJKSimplex splx) { 
@@ -155,7 +137,6 @@ public class DistanceGJK
             Gizmos.DrawWireSphere(splx[0].v, 0.0625F);
             Gizmos.color = Color.yellow;
             Gizmos.DrawWireSphere(splx[1].v, 0.0625F);
-            // Debug.Log(r + " " + splx[0].v + " " + splx[1].v);
         }
 
         v = cv;
@@ -188,7 +169,6 @@ public class DistanceGJK
             Gizmos.DrawWireSphere(splx[1].v, 0.0625F);
             Gizmos.color = Color.blue;
             Gizmos.DrawWireSphere(splx[2].v, 0.0625F);
-            // Debug.Log(r + " " + splx[0].v + " " + splx[1].v + " " + splx[2].v);
         }
 
         v = cv;
@@ -216,12 +196,8 @@ public class DistanceGJK
                     splx.Add(c);
                     splx.Add(b);
                     splx.Add(a);
-                    // if(iteration == stopat)
-                    //     Debug.Log("IS " + " " + signed_vol);
                 }
                 else {
-                    // if(iteration == stopat)
-                    //     Debug.Log("IS NOT" + " " + signed_vol);
                     splx.Add(a);
                     splx.Add(b);
                     splx.Add(c);
@@ -258,9 +234,10 @@ public class DistanceGJK
             Gizmos.DrawWireSphere(splx[2].v, 0.0625F);
             Gizmos.color = Color.yellow;
             Gizmos.DrawWireSphere(splx[3].v, 0.0625F);
-            // Debug.Log(r);
         }
     
+        // Debug.Log(iteration + " " + r);
+
         v = cv;
         switch(r) {
             case 0x0: // ENCLOSED
@@ -294,9 +271,9 @@ public class DistanceGJK
             break;
             case 0x7: // ABC
                 splx.Clear();
-                splx.Add(c);
-                splx.Add(b);
                 splx.Add(a);
+                splx.Add(b);
+                splx.Add(c);
             break;
             case 0x8: // D
                 splx.Clear();

@@ -932,25 +932,25 @@ namespace com.cozyhome.Vectors
             Vector3 cbd = Vector3.Cross(b - c, d - b);
 
             // THEY ARE ALL FLIPPED
-            // if(DistanceGJK.iteration == DistanceGJK.stopat) {
-            //     Gizmos.color = Color.magenta;
-            //     Gizmos.DrawRay(a, adb / 10);
-            //     Gizmos.DrawRay(d, adb / 10);
-            //     Gizmos.DrawRay(b, adb / 10);
-            //     Gizmos.color = Color.yellow;
-            //     Gizmos.DrawRay(a, acd / 5);
-            //     Gizmos.DrawRay(c, acd / 5);
-            //     Gizmos.DrawRay(d, acd / 5);
-            //     Gizmos.color = Color.cyan;
-            //     Gizmos.DrawRay(a, abc / 5);
-            //     Gizmos.DrawRay(b, abc / 5);
-            //     Gizmos.DrawRay(c, abc / 5);
-            //     Gizmos.color = Color.green;
-            //     Gizmos.DrawRay(c, cbd / 5);
-            //     Gizmos.DrawRay(b, cbd / 5);
-            //     Gizmos.DrawRay(d, cbd / 5);
-            //     Gizmos.color = Color.white;
-            // }
+            if(DistanceGJK.iteration == DistanceGJK.stopat) {
+                Gizmos.color = Color.magenta;
+                Gizmos.DrawRay(a, adb / 10);
+                Gizmos.DrawRay(d, adb / 10);
+                Gizmos.DrawRay(b, adb / 10);
+                Gizmos.color = Color.yellow;
+                Gizmos.DrawRay(a, acd / 5);
+                Gizmos.DrawRay(c, acd / 5);
+                Gizmos.DrawRay(d, acd / 5);
+                Gizmos.color = Color.cyan;
+                Gizmos.DrawRay(a, abc / 5);
+                Gizmos.DrawRay(b, abc / 5);
+                Gizmos.DrawRay(c, abc / 5);
+                Gizmos.color = Color.green;
+                Gizmos.DrawRay(c, cbd / 5);
+                Gizmos.DrawRay(b, cbd / 5);
+                Gizmos.DrawRay(d, cbd / 5);
+                Gizmos.color = Color.white;
+            }
 
             float vol = Vector3.Dot(a - c, cbd);
             Vector4 Bary(Vector3 p) {
