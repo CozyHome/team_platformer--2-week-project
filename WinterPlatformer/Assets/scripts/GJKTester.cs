@@ -25,11 +25,11 @@ public class GJKTester : MonoBehaviour
             // Run GJK
             bool answer = BooleanGJK.GJK(
                 new ConvexPolyhedron(
-                    PolyhedronA.GetComponent<MeshCollider>().sharedMesh.vertices,
+                    PolyhedronA.GetComponent<MeshCollider>().sharedMesh,
                     PolyhedronA.transform.localToWorldMatrix
                 ),
                 new ConvexPolyhedron(
-                    PolyhedronB.GetComponent<MeshCollider>().sharedMesh.vertices,
+                    PolyhedronB.GetComponent<MeshCollider>().sharedMesh,
                     PolyhedronB.transform.localToWorldMatrix
                 )
             ) == BooleanGJK.GJKCASE.INTERSECTING;

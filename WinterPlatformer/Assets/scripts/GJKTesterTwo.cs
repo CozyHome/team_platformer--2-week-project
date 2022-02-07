@@ -24,11 +24,11 @@ public class GJKTesterTwo : MonoBehaviour
             // Run GJK
             float answer = DistanceGJK.GJK(
                 new ConvexPolyhedron(
-                    PolyhedronA.GetComponent<MeshCollider>().sharedMesh.vertices,
+                    PolyhedronA.GetComponent<MeshCollider>().sharedMesh,
                     PolyhedronA.transform.localToWorldMatrix
                 ),
                 new ConvexPolyhedron(
-                    PolyhedronB.GetComponent<MeshCollider>().sharedMesh.vertices,
+                    PolyhedronB.GetComponent<MeshCollider>().sharedMesh,
                     PolyhedronB.transform.localToWorldMatrix
                 )
             );
@@ -38,7 +38,7 @@ public class GJKTesterTwo : MonoBehaviour
             Gizmos.color = isColliding ? Color.red : Color.green;
             Gizmos.matrix = PolyhedronA.transform.localToWorldMatrix;
             Gizmos.DrawWireMesh(
-                PolyhedronA.GetComponent<MeshCollider>().sharedMesh,
+                PolyhedronA.GetComponent<MeshFilter>().sharedMesh,
                 0,
                 Vector3.zero,
                 Quaternion.identity,
@@ -48,7 +48,7 @@ public class GJKTesterTwo : MonoBehaviour
             Gizmos.color = isColliding ? Color.red : Color.blue;
             Gizmos.matrix = PolyhedronB.transform.localToWorldMatrix;
             Gizmos.DrawWireMesh(
-                PolyhedronB.GetComponent<MeshCollider>().sharedMesh,
+                PolyhedronB.GetComponent<MeshFilter>().sharedMesh,
                 0,
                 Vector3.zero,
                 Quaternion.identity,

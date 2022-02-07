@@ -6,6 +6,8 @@ using static BooleanGJK;
 
 public class DistanceGJK
 {
+    public const float eps = 1e-4f;
+    
     public static bool Same(Vector3 v1, Vector3 v2) {
         return VectorHeader.Dot(v1, v2) > 0;
     }
@@ -14,7 +16,6 @@ public class DistanceGJK
     public static float GJK(in ConvexPolyhedron a, in ConvexPolyhedron b) {
         GJKSimplex splx = new GJKSimplex();
         // const float eps = 0.0165F;
-        const float eps = 0.001F;
 
         bool isDupe(MinkowskiVertex p) {
             for(int i = 0;i < splx.Count;i++) {
@@ -39,17 +40,19 @@ public class DistanceGJK
             var B = b.Support(-d);
             var W = new MinkowskiVertex(A, B, A - B);
 
-            float v1 = Vector3.Dot(v, v);
-            
+            float v1 = Vector3.Dot(v, v);            
             if (isDupe(W) || v1 - Vector3.Dot(W.v, v) < eps * v1)
             {
-                Debug.Log(iteration);
+                Debug.Log(iteration + " " + a.Count + " " + b.Count);
                 DrawClosest(splx, v);
                 return v.magnitude;
             }
             else {
                 splx.Push(W);
-                MutateSimplex(ref v, ref splx);
+                if(!MutateSimplex(ref v, ref splx)) {
+                    Debug.Log("VOLUMETRIC EXIT");
+                    break;
+                }
             }
 
             // 1. Check Duplicates (termination #1)
@@ -57,7 +60,9 @@ public class DistanceGJK
             // 3. DoSimplex() (termination #3)
         } while(iteration++ < (a.Count + b.Count) && splx.Count < 4);
 
-        Debug.Log(iteration);
+        Debug.Log(iteration + " " + a.Count + " " + b.Count);
+        if(iteration == 45)
+            Debug.Break();
         DrawClosest(splx, v);
         return v.magnitude; // we are intersecting
 
@@ -106,6 +111,18 @@ public class DistanceGJK
                         0.0625F
                     );
 
+                    Gizmos.color = Color.white;
+                    Gizmos.DrawWireSphere(splx[0].a, 0.125F);
+                    Gizmos.DrawWireSphere(splx[1].a, 0.125F);
+                    Gizmos.DrawWireSphere(splx[2].a, 0.125F);
+                    Gizmos.DrawWireSphere(splx[3].a, 0.125F);
+                    
+                    Gizmos.color = Color.magenta;
+                    Gizmos.DrawWireSphere(splx[0].b, 0.125F);
+                    Gizmos.DrawWireSphere(splx[1].b, 0.125F);
+                    Gizmos.DrawWireSphere(splx[2].b, 0.125F);
+                    Gizmos.DrawWireSphere(splx[3].b, 0.125F);
+
                 break;
             }
             Gizmos.color = Color.white;
@@ -114,7 +131,7 @@ public class DistanceGJK
 
     public static int stopat = 0;
 
-    public static void MutateSimplex(ref Vector3 v, ref GJKSimplex splx) {
+    public static bool MutateSimplex(ref Vector3 v, ref GJKSimplex splx) {
         switch(splx.Count) {
             case 1:
                 Simplex0D(ref v, ref splx);
@@ -126,9 +143,11 @@ public class DistanceGJK
                 Simplex2D(ref v, ref splx);
                 break;
             case 4:
-                Simplex3D(ref v, ref splx);
-                break;
+                return Simplex3D(ref v, ref splx);
+                // break;
         }
+
+        return true;
     }
 
     public static void Simplex0D(ref Vector3 v, ref GJKSimplex splx) { 
@@ -187,6 +206,7 @@ public class DistanceGJK
             Gizmos.DrawWireSphere(splx[1].v, 0.0625F);
             Gizmos.color = Color.blue;
             Gizmos.DrawWireSphere(splx[2].v, 0.0625F);
+            // Debug.Log(r);
         }
 
         v = cv;
@@ -224,7 +244,7 @@ public class DistanceGJK
         }
     }
 
-    public static void Simplex3D(ref Vector3 v, ref GJKSimplex splx) {
+    public static bool Simplex3D(ref Vector3 v, ref GJKSimplex splx) {
         var a = splx[0];
         var b = splx[1];
         var c = splx[2];
@@ -253,8 +273,14 @@ public class DistanceGJK
             Gizmos.color = Color.yellow;
             Gizmos.DrawWireSphere(splx[3].v, 0.0625F);
         }
-    
-        // Debug.Log(iteration + " " + r);
+
+        // triple product
+        float volume = VectorHeader.Dot(splx[0].v - splx[1].v,
+                Vector3.Cross(splx[1].v - splx[3].v, splx[1].v - splx[2].v)
+        );
+
+        if(Mathf.Abs(volume) < eps)
+            return false;
 
         v = cv;
         switch(r) {
@@ -331,5 +357,7 @@ public class DistanceGJK
                 splx.Add(b);
             break;
         }
+
+        return true;
     }
 }

@@ -6,8 +6,8 @@ public struct ConvexPolyhedron {
         private Vector3[] points;
         private Matrix4x4 m;
 
-    public ConvexPolyhedron(Vector3[] points, Matrix4x4 t_m) {
-            this.points = points;
+    public ConvexPolyhedron(Mesh mesh, Matrix4x4 t_m) {
+            this.points = mesh.vertices;
             this.m = t_m;
         }
 
