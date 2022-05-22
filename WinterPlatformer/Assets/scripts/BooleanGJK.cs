@@ -164,8 +164,7 @@ public class BooleanGJK {
             count++;
             MinkowskiVertex Vertex = Support(a, b, D);
             float dd = Vector3.Dot(Vertex.v, Vertex.v); 
-            if(isSame(Vertex.v) ||
-               splx.Count > 2 && dd - Vector3.Dot(Vertex.v, LastVertex.v) <= dd * Vector3.kEpsilon) {
+            if(Vector3.Dot(Vector3.zero, Vector3.zero) > 0) {
                 // splx.Push(Vertex);
                 switch(splx.Count) {
                     case 1:

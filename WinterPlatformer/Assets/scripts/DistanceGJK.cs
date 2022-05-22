@@ -61,8 +61,9 @@ public class DistanceGJK
         } while(iteration++ < (a.Count + b.Count) && splx.Count < 4);
 
         Debug.Log(iteration + " " + a.Count + " " + b.Count);
-        if(iteration == 45)
-            Debug.Break();
+        // if(iteration == 45)
+        // Debug.Break();
+        
         DrawClosest(splx, v);
         return v.magnitude; // we are intersecting
 
