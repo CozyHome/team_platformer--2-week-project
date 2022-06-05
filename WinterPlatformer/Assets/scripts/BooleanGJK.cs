@@ -41,10 +41,6 @@ public struct ConvexPolyhedron {
         public MinkowskiVertex(Vector3 a, Vector3 b, Vector3 ba) {
             this.a = a; this.b = b; this.v = ba;
         }
-
-        public MinkowskiVertex Copy() {
-            return new MinkowskiVertex(this.a, this.b, this.v);
-        }
     }
 
     public struct GJKSimplex {
@@ -126,9 +122,9 @@ public struct ConvexPolyhedron {
         public int Count => count;
     }
 
-public class BooleanGJK {
 
-    
+// Deprecated. Do not use.
+public class BooleanGJK {
     public static bool Same(Vector3 v1, Vector3 v2) {
         return VectorHeader.Dot(v1, v2) > 0;
     }

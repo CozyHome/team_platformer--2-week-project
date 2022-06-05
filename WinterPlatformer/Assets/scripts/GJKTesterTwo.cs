@@ -54,6 +54,8 @@ public class GJKTesterTwo : MonoBehaviour
                 Quaternion.identity,
                 Vector3.one
             );
+            
+            Debug.Log(DistanceGJK.iteration);
         }
 
     }

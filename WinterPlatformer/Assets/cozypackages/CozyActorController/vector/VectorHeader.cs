@@ -190,6 +190,11 @@ namespace com.cozyhome.Vectors
                 return bits.a | bits.b;
         }
 
+// voronoi regions are denoted by the vertex indices in the simplex. For example:
+// (0. Vertex) IF the closest feature of our simplex is zero dimensional, the flag that is 
+// returned is simply the bit toggled by the closest vertex.
+// (2. Edge) IF the closest feature of our simplex is one dimensional, the flag that is returned
+// is the OR of both vertex bits that represent the simplex edge.
         public static (int, Vector3) Barycentric1D_GJK(
         (Vector3 a, Vector3 b) edge, (int a, int b) bits,
         Vector3 p) {
@@ -204,11 +209,12 @@ namespace com.cozyhome.Vectors
 
             float v = VectorHeader.Dot(p - edge.a, ab);
             
+/* (Voronoi diagram: A)----(AB)----(B) */
             if(v > am)
-                return (bits.b, edge.b);
+                return (bits.b, edge.b); // B
             else if(v <= 0F)
-                return (bits.a, edge.a);
-            else
+                return (bits.a, edge.a); // A
+            else // AB
                 return (bits.a | bits.b, edge.a + VectorHeader.ProjectVector(p - edge.a, ab));
         }
 
@@ -451,7 +457,7 @@ namespace com.cozyhome.Vectors
             Vector3 p) {
             Vector3 abc  = Vector3.Cross(tri.c - tri.a, tri.b - tri.a);
                         
-            // Gizmos.DrawRay((tri.a + tri.b + tri.c) / 3, abc);
+// Gizmos.DrawRay((tri.a + tri.b + tri.c) / 3, abc);
 
             Vector3 ab_n = Vector3.Cross(abc, tri.b - tri.a);
             Vector3 bc_n = Vector3.Cross(abc, tri.c - tri.b);
@@ -539,6 +545,13 @@ namespace com.cozyhome.Vectors
             }        
         }
         
+// voronoi regions are denoted by the vertex indices in the simplex. For example:
+// (0. Vertex) IF the closest feature of our simplex is zero dimensional, the flag that is 
+// returned is simply the bit toggled by the closest vertex.
+// (2. Edge) IF the closest feature of our simplex is one dimensional, the flag that is returned
+// is the OR of both vertex bits that represent the simplex edge.
+// (3. Triangle) IF the closest feature of our simplex is two dimensional, the flag that is returned
+// is the OR of three vertex bits that represent our simplex face.
         public static (int r, Vector3 v) Barycentric2D_GJK(
         (Vector3 a, Vector3 b, Vector3 c) tri,
         (int     a, int     b, int     c) bits,
@@ -555,27 +568,25 @@ namespace com.cozyhome.Vectors
                 return VectorHeader.Dot(v1, v2) > 0;
             };
 
-            // Vector3 Bary(Vector3 p) {
-            //     Vector3 v = new Vector3(
-            //     Vector3.Dot(Vector3.Cross(p - tri.b, tri.c - p), abc) / area, // 0 -> ab x ao oab
-            //     Vector3.Dot(Vector3.Cross(p - tri.c, tri.a - p), abc) / area, // 1 -> bc x bo obc
-            //     0F);
-            //     v[2] = 1 - v[0] - v[1];  // 2 -> ca x co oca
-            //     return v;
-            // }
-            
             int ComputeSignedAreas(Vector3 p) {
                 int nflags = 0;
                 nflags |= Same(p - tri.a, ab_n) ? (1 << 0) : 0; // AB
-                nflags |= Same(p - tri.b, bc_n) ? (1 << 1) : 0; // AB
-                nflags |= Same(p - tri.c, ca_n) ? (1 << 2) : 0; // AB
+                nflags |= Same(p - tri.b, bc_n) ? (1 << 1) : 0; // BC
+                nflags |= Same(p - tri.c, ca_n) ? (1 << 2) : 0; // CA
                 return nflags;
             }
 
+/*
+    DualEdges() deals with the particular case where the origin is outside of two support planes of
+    the entire triangle.
+
+    DualEdges() serves to abstract the various permutations of the simplex in two dimensions.
+    Instead of handling every single case by hand, I have written DualEdges() to simply refer to
+    the vertices provided by the bits that correspond in the bits tuple.
+    This way, all possible combinations of two edges can be handled with one call.
+*/
             (int, Vector3) DualEdges((Vector3 x, Vector3 y, Vector3 z) pm,
                           (int     x, int     y,     int z) bits) {
-                // dual edges will serve as a permuted form of the triangle
-                // xy, zy edges will be constructed for sign analysis
                 Vector3 xy = pm.y - pm.x;
                 Vector3 zy = pm.y - pm.z;
 
@@ -585,6 +596,7 @@ namespace com.cozyhome.Vectors
 
                 Vector3 zxy = Vector3.Cross(zy, xy);
 
+// the normals of the two edges that are part of the triangle's boundary
                 Vector3 xy_n = Vector3.Cross(xy, zxy);
                 Vector3 zy_n = Vector3.Cross(zxy, zy);
                 
@@ -609,30 +621,15 @@ namespace com.cozyhome.Vectors
                 return (bits.x | bits.y | bits.z, p - VectorHeader.ProjectVector(p - pm.x, zxy.normalized));
             }
 
-            (int, Vector3) Edge((Vector3 x, Vector3 y) pm, 
-                     (int     x, int     y) bits) {
-                Vector3 xy = pm.y - pm.x;
-                Vector3 yp = p    - pm.y;
-                Vector3 xp = p    - pm.x;
-
-                if(Same(xy, yp) && Same(xy, xp))
-                    return (bits.y, (pm.y));
-                
-                if(!Same(xy, yp) && !Same(xy, xp))
-                    return (bits.x, (pm.x));
-
-                return (bits.x | bits.y, (pm.x + VectorHeader.ProjectVector(xp, xy.normalized)));
-            }
-
             switch(ComputeSignedAreas(p)) { 
                 case 1: // AB
-                    return Edge((tri.a, tri.b), (bits.a, bits.b));
+                    return Barycentric1D_GJK((tri.a, tri.b), (bits.a, bits.b), p);
                 case 2: // BC
-                    return Edge((tri.b, tri.c) , (bits.b, bits.c));
+                    return Barycentric1D_GJK((tri.b, tri.c) , (bits.b, bits.c), p);
                 case 3: // AB & BC (ABC)
                     return DualEdges((tri.a, tri.b, tri.c), (bits.a, bits.b, bits.c));
                 case 4: // CA
-                    return Edge((tri.c, tri.a), (bits.c, bits.a));
+                    return Barycentric1D_GJK((tri.c, tri.a), (bits.c, bits.a), p);
                 case 5: // CA & AB (CAB)
                     return DualEdges((tri.c, tri.a, tri.b), (bits.c, bits.a, bits.b));
                 case 6: // CA & BC (BCA)
@@ -918,21 +915,187 @@ namespace com.cozyhome.Vectors
         public static (int, Vector4) Barycentric3D_GJK(
             (Vector3 a, Vector3 b, Vector3 c, Vector3 d) tet, Vector3 o) {
             bool Same(Vector3 v1, Vector3 v2) {
-                    return VectorHeader.Dot(v1, v2) > 0;
+                return VectorHeader.Dot(v1, v2) > 0;
             };
 
             Vector3 a = tet.a;
             Vector3 b = tet.b;
             Vector3 c = tet.c;
             Vector3 d = tet.d;
-            
+
             Vector3 adb = Vector3.Cross(d - a, b - d);
             Vector3 acd = Vector3.Cross(c - a, d - c);
             Vector3 abc = Vector3.Cross(b - a, c - b);
             Vector3 cbd = Vector3.Cross(b - c, d - b);
 
-            // THEY ARE ALL FLIPPED
-            if(DistanceGJK.iteration == DistanceGJK.stopat) {
+#if UNITY_EDITOR
+            GJK_DisplayTetFaces(a, b, c, d, adb, acd, abc, cbd);
+#endif
+
+            float vol = Vector3.Dot(a - c, cbd);
+// Vector4 Bary(Vector3 p) {
+//     Vector4 v = new Vector4(
+//         Vector3.Dot(p - c, cbd) / vol, // a
+//         Vector3.Dot(p - a, acd) / vol, // b
+//         Vector3.Dot(p - d, adb) / vol, // c
+//         0F
+//     );
+//     v[3] = 1 - v[2] - v[1] - v[0];
+//     return v;
+// }
+
+            (int, Vector3) TripleEdges((Vector3 x, Vector3 y, Vector3 z, Vector3 w) tet, (int x, int y, int z, int w) bits, Vector3 p) {
+                int nflags = 0;
+                nflags |= Same(o - tet.x, tet.x - tet.y) ? (1 << 0) : 0;
+                nflags |= Same(o - tet.x, tet.x - tet.z) ? (1 << 1) : 0;
+                nflags |= Same(o - tet.x, tet.x - tet.w) ? (1 << 2) : 0;
+
+// Gizmos.color = Color.red;
+// Gizmos.DrawRay(tet.x, tet.x - tet.y); // red
+// Gizmos.color = Color.green;
+// Gizmos.DrawRay(tet.x, tet.x - tet.z); // gr
+// Gizmos.color = Color.blue;
+// Gizmos.DrawRay(tet.x, tet.x - tet.w); // bl
+// Gizmos.color = Color.white;
+
+// find the closest triangle and narrow our closest features down to its features. 
+                switch (nflags) {
+                    default: // appease the compiler
+                        return (0, Vector3.zero);
+                    case 1: // red
+                        return VectorHeader.Barycentric2D_GJK((tet.x, tet.w, tet.z), (bits.x, bits.w, bits.z), o);
+                    // XWZ
+                    case 2: // blue
+                        return VectorHeader.Barycentric2D_GJK((tet.y, tet.w, tet.x), (bits.y, bits.w, bits.x), o);
+                    // YWX
+                    case 3: // red and blue
+                        Vector3 xyw = Vector3.Cross(tet.x - tet.w, Vector3.Cross(tet.x - tet.w, tet.x - tet.y));
+                        if (Same(o - tet.x, xyw))
+                            return VectorHeader.Barycentric2D_GJK((tet.y, tet.w, tet.x), (bits.y, bits.w, bits.x), o);
+                        // YWX
+                        else
+                            return VectorHeader.Barycentric2D_GJK((tet.x, tet.w, tet.z), (bits.x, bits.w, bits.z), o);
+                    // XWZ
+                    case 4: // green
+                        return VectorHeader.Barycentric2D_GJK((tet.x, tet.z, tet.y), (bits.x, bits.z, bits.y), o);
+                    // XZY
+                    case 5: // red and green
+                        Vector3 xzw = Vector3.Cross(tet.z - tet.x, Vector3.Cross(tet.x - tet.z, tet.x - tet.w));
+                        if (Same(o - tet.x, xzw))
+                            return VectorHeader.Barycentric2D_GJK((tet.y, tet.x, tet.z), (bits.y, bits.x, bits.z), o);
+                        // YXZ
+                        else
+                            // XWZ
+                            return VectorHeader.Barycentric2D_GJK((tet.x, tet.w, tet.z), (bits.x, bits.w, bits.z), o);
+                    case 6: // blue and green
+                        Vector3 ywx = Vector3.Cross(tet.y - tet.x, Vector3.Cross(tet.x - tet.z, tet.y - tet.x));
+                        if (Same(o - tet.x, ywx)) {
+                            // YWX
+                            return VectorHeader.Barycentric2D_GJK((tet.y, tet.w, tet.x), (bits.y, bits.w, bits.x), o);
+                        }
+                        else {
+                            return VectorHeader.Barycentric2D_GJK((tet.y, tet.x, tet.z), (bits.y, bits.x, bits.z), o);
+                        }
+                    // YXZ
+                    case 7: // red blue green
+                        return (bits.x, tet.x);
+                        // X
+                }
+            }
+
+            (int, Vector3) SingleEdges((Vector3 x, Vector3 y, Vector3 z) tet, (int x, int y, int z) bits, Vector3 p) {
+                return VectorHeader.Barycentric2D_GJK((tet.x, tet.y, tet.z), (bits.x, bits.y, bits.z), o);
+            }
+
+            (int, Vector3) DualEdges((Vector3 x, Vector3 y, Vector3 z, Vector3 w) tet, (int x, int y, int z, int w) bits, Vector3 p) {
+                Vector3 zxy = Vector3.Cross(tet.x - tet.z, tet.y - tet.x);
+                Vector3 xwy = Vector3.Cross(tet.w - tet.x, tet.y - tet.w);
+                Vector3 xwy_n = Vector3.Cross(Vector3.Cross(zxy, xwy), xwy);
+                Vector3 zxy_n = Vector3.Cross(zxy, Vector3.Cross(zxy, xwy));
+
+// Gizmos.color = Color.cyan;
+// Gizmos.DrawRay(tet.x, xwy_n);
+// Gizmos.DrawRay(tet.x, zxy_n);
+// Gizmos.color = Color.white;
+
+                Vector3 xo = o - tet.x;
+                // see which side of crease we exist ins
+                if (!Same(xo, xwy_n) && !Same(xo, zxy_n))
+                    return VectorHeader.Barycentric1D_GJK((tet.x, tet.y), (bits.x, bits.y), o);
+                else if (Same(xo, zxy_n))
+                    return VectorHeader.Barycentric2D_GJK((tet.z, tet.x, tet.y), (bits.z, bits.x, bits.y), o);
+                else if (Same(xo, xwy_n))
+                    return VectorHeader.Barycentric2D_GJK((tet.x, tet.w, tet.y), (bits.x, bits.w, bits.y), o);
+
+                return (0, Vector3.zero); // should never happen
+            }
+
+            int ComputeSignBits(Vector3 p) {
+                int nflags = 0;
+                nflags |= VectorHeader.Dot(o - b, adb) > 0 ? (1 << 0) : 0;
+                nflags |= VectorHeader.Dot(o - d, acd) > 0 ? (1 << 1) : 0;
+                nflags |= VectorHeader.Dot(o - c, abc) > 0 ? (1 << 2) : 0;
+                nflags |= VectorHeader.Dot(o - d, cbd) > 0 ? (1 << 3) : 0;
+                return nflags;
+            }
+
+            (int reg, Vector3 v) vec = (0, Vector3.zero);
+
+            int v = ComputeSignBits(o);
+            switch (v) {
+                case 1:  // ADB             (SINGULAR)
+                    vec = SingleEdges((a, d, b), (0x1, 0x8, 0x2), o);
+                    break;
+                case 2:  // ACD             (SINGULAR)
+                    vec = SingleEdges((a, c, d), (0x1, 0x4, 0x8), o);
+                    break;
+                case 3:  // ADB & ACD       (DUAL)
+                    vec = DualEdges((a, d, b, c), (0x1, 0x8, 0x2, 0x4), o);
+                    break;
+                case 4:  // ABC             (SINGULAR)
+                    vec = SingleEdges((a, b, c), (0x1, 0x2, 0x4), o);
+                    break;
+                case 5:  // ABC & ADB (     DUAL)
+                    vec = DualEdges((a, b, c, d), (0x1, 0x2, 0x4, 0x8), o);
+                    break;
+                case 6:  // ACD & ABC       (DUAL)
+                    vec = DualEdges((a, c, d, b), (0x1, 0x4, 0x8, 0x2), o);
+                    break;
+                case 7:  // ADB & ACD & ABC (TRIPLE)
+                    vec = TripleEdges((a, b, c, d), (0x1, 0x2, 0x4, 0x8), o);
+                    break;
+                case 8:  // CBD             (SINGULAR)
+                    vec = SingleEdges((c, b, d), (0x4, 0x2, 0x8), o);
+                    break;
+                case 9:  // ADB & CBD       (DUAL)
+                    vec = DualEdges((b, d, c, a), (0x2, 0x8, 0x4, 0x1), o);
+                    break;
+                case 10: // ACD & CBD       (DUAL)
+                    vec = DualEdges((c, d, a, b), (0x4, 0x8, 0x1, 0x2), o);
+                    break;
+                case 11: // ADB & ACD & CBD (TRIPLE)
+                    vec = TripleEdges((d, b, c, a), (0x8, 0x2, 0x4, 0x1), o);
+                    break;
+                case 12: // ABC & CBD       (DUAL)
+                    vec = DualEdges((b, c, a, d), (0x2, 0x4, 0x1, 0x8), o);
+                    break;
+                case 13: // ADB & ABC & CBD (TRIPLE)
+                    vec = TripleEdges((b, a, c, d), (0x2, 0x1, 0x4, 0x8), o);
+                    break;
+                case 14: // ACD & ABC & CBD (TRIPLE)
+                    vec = TripleEdges((c, b, a, d), (0x4, 0x2, 0x1, 0x8), o);
+                    break;
+                default:
+                    vec = (0, o);
+                    break;
+            }
+
+            return (vec.reg, vec.v);
+        }
+
+#if UNITY_EDITOR
+        private static void GJK_DisplayTetFaces(Vector3 a, Vector3 b, Vector3 c, Vector3 d, Vector3 adb, Vector3 acd, Vector3 abc, Vector3 cbd) {
+            if (DistanceGJK.iteration == DistanceGJK.stopat) {
                 Gizmos.color = Color.magenta;
                 Gizmos.DrawRay(a, adb / 10);
                 Gizmos.DrawRay(d, adb / 10);
@@ -951,171 +1114,7 @@ namespace com.cozyhome.Vectors
                 Gizmos.DrawRay(d, cbd / 5);
                 Gizmos.color = Color.white;
             }
-
-            float vol = Vector3.Dot(a - c, cbd);
-            Vector4 Bary(Vector3 p) {
-                Vector4 v = new Vector4(
-                    Vector3.Dot(p - c, cbd) / vol, // a
-                    Vector3.Dot(p - a, acd) / vol, // b
-                    Vector3.Dot(p - d, adb) / vol, // c
-                    0F
-                );
-                v[3] = 1 - v[2] - v[1] - v[0];
-                return v;
-            }
-
-            (int, Vector3) TripleEdges((Vector3 x, Vector3 y, Vector3 z, Vector3 w) tet, (int x, int y, int z, int w) bits, Vector3 p) {
-                int nflags = 0;
-                nflags |= Same(o - tet.x, tet.x - tet.y) ? (1 << 0) : 0;
-                nflags |= Same(o - tet.x, tet.x - tet.z) ? (1 << 1) : 0;
-                nflags |= Same(o - tet.x, tet.x - tet.w) ? (1 << 2) : 0;
-            
-                // Gizmos.color = Color.red;
-                // Gizmos.DrawRay(tet.x, tet.x - tet.y); // red
-                // Gizmos.color = Color.green;
-                // Gizmos.DrawRay(tet.x, tet.x - tet.z); // gr
-                // Gizmos.color = Color.blue;
-                // Gizmos.DrawRay(tet.x, tet.x - tet.w); // bl
-                // Gizmos.color = Color.white;
-
-                // Debug.Log(nflags);
-                switch(nflags) {
-                    default:
-                        // Debug.Log("OK");
-                        return (0, Vector3.zero);
-                    case 1: // red
-                        // return VectorHeader.ClosestPointTriangle((tet.x, tet.w, tet.z), o).b;
-                        return VectorHeader.Barycentric2D_GJK((tet.x, tet.w, tet.z), (bits.x, bits.w, bits.z), o);
-                        // XWZ
-                    case 2: // blue
-                        // return VectorHeader.ClosestPointTriangle((tet.y, tet.w, tet.x), o).b;
-                        return VectorHeader.Barycentric2D_GJK((tet.y, tet.w, tet.x), (bits.y, bits.w, bits.x), o);
-                        // YWX
-                    case 3: // red and blue
-                        Vector3 xyw = Vector3.Cross(tet.x - tet.w, Vector3.Cross(tet.x - tet.w, tet.x - tet.y));
-                        if(Same(o - tet.x, xyw))
-                            // return VectorHeader.ClosestPointTriangle((tet.y, tet.w, tet.x), o).b; 
-                            return VectorHeader.Barycentric2D_GJK((tet.y, tet.w, tet.x), (bits.y, bits.w, bits.x), o); 
-                            // YWX
-                        else
-                            return VectorHeader.Barycentric2D_GJK((tet.x, tet.w, tet.z), (bits.x, bits.w, bits.z), o);
-                            // XWZ
-                    case 4: // green
-                        return VectorHeader.Barycentric2D_GJK((tet.x, tet.z, tet.y), (bits.x, bits.z, bits.y), o);
-                        // XZY
-                    case 5: // red and green
-                        Vector3 xzw = Vector3.Cross(tet.z - tet.x, Vector3.Cross(tet.x - tet.z, tet.x - tet.w));
-                        if(Same(o - tet.x, xzw))
-                            return VectorHeader.Barycentric2D_GJK((tet.y, tet.x, tet.z), (bits.y, bits.x, bits.z), o);
-                            // YXZ
-                        else
-                            // XWZ
-                            return VectorHeader.Barycentric2D_GJK((tet.x, tet.w, tet.z), (bits.x, bits.w, bits.z), o);
-                    case 6: // blue and green
-                        Vector3 ywx = Vector3.Cross(tet.y - tet.x, Vector3.Cross(tet.x - tet.z, tet.y - tet.x));
-                        if(Same(o - tet.x, ywx)) {
-                            // YWX
-                            return VectorHeader.Barycentric2D_GJK((tet.y, tet.w, tet.x), (bits.y, bits.w, bits.x), o);
-                        }
-                        else {
-                            return VectorHeader.Barycentric2D_GJK((tet.y, tet.x, tet.z), (bits.y, bits.x, bits.z), o);
-                        }
-                            // YXZ
-                    case 7: // red blue green
-                        return (bits.x, tet.x);
-                        // X
-                }
-            }
-
-            (int, Vector3) SingleEdges((Vector3 x, Vector3 y, Vector3 z) tet, (int x, int y, int z) bits, Vector3 p) {
-                return VectorHeader.Barycentric2D_GJK((tet.x, tet.y, tet.z), (bits.x, bits.y, bits.z), o);
-            }
-
-            (int, Vector3) DualEdges((Vector3 x, Vector3 y, Vector3 z, Vector3 w) tet, (int x, int y, int z, int w) bits, Vector3 p) {
-                Vector3 zxy = Vector3.Cross(tet.x - tet.z, tet.y - tet.x);
-                Vector3 xwy = Vector3.Cross(tet.w - tet.x, tet.y - tet.w);
-                Vector3 xwy_n = Vector3.Cross(Vector3.Cross(zxy, xwy), xwy);
-                Vector3 zxy_n = Vector3.Cross(zxy, Vector3.Cross(zxy, xwy));
-
-                // Gizmos.color = Color.cyan;
-                // Gizmos.DrawRay(tet.x, xwy_n);
-                // Gizmos.DrawRay(tet.x, zxy_n);
-                // Gizmos.color = Color.white;
-
-                Vector3 xo = o - tet.x;
-                // see which side of crease we exist in
-                if(!Same(xo, xwy_n) && !Same(xo, zxy_n))
-                    return VectorHeader.Barycentric1D_GJK((tet.x, tet.y), (bits.x, bits.y), o);
-                else if(Same(xo, zxy_n))
-                    return VectorHeader.Barycentric2D_GJK((tet.z, tet.x, tet.y), (bits.z, bits.x, bits.y), o);
-                else if(Same(xo, xwy_n))
-                    return VectorHeader.Barycentric2D_GJK((tet.x, tet.w, tet.y), (bits.x, bits.w, bits.y), o);
-
-                return (0, Vector3.zero); // should never happen
-            }
-
-            int ComputeSignBits(Vector3 p) {
-                int nflags = 0;
-                nflags |= VectorHeader.Dot(o - b, adb) > 0 ? (1 << 0) : 0;
-                nflags |= VectorHeader.Dot(o - d, acd) > 0 ? (1 << 1) : 0;
-                nflags |= VectorHeader.Dot(o - c, abc) > 0 ? (1 << 2) : 0;
-                nflags |= VectorHeader.Dot(o - d, cbd) > 0 ? (1 << 3) : 0;
-                return nflags;
-            }
-
-            (int reg, Vector3 v) vec = (0, Vector3.zero);
-
-            int v = ComputeSignBits(o);
-            // Debug.Log(v);
-            switch (v) {
-                case 1:  // ADB             (SINGULAR)
-                    vec = SingleEdges((a, d, b),       (0x1, 0x8, 0x2), o);
-                    break;
-                case 2:  // ACD             (SINGULAR)
-                    vec = SingleEdges((a, c, d),       (0x1, 0x4, 0x8), o);
-                    break;
-                case 3:  // ADB & ACD       (DUAL)
-                    vec = DualEdges((a, d, b, c),      (0x1, 0x8, 0x2, 0x4), o);
-                    break;
-                case 4:  // ABC             (SINGULAR)
-                    vec = SingleEdges((a, b, c),       (0x1, 0x2, 0x4), o);
-                    break;
-                case 5:  // ABC & ADB (     DUAL)
-                    vec = DualEdges((a, b, c, d),      (0x1, 0x2, 0x4, 0x8), o);
-                    break;
-                case 6:  // ACD & ABC       (DUAL)
-                     vec = DualEdges((a, c, d, b),      (0x1, 0x4, 0x8, 0x2), o);
-                    break;
-                case 7:  // ADB & ACD & ABC (TRIPLE)
-                    vec = TripleEdges((a, b, c, d),    (0x1, 0x2, 0x4, 0x8), o);
-                    break;
-                case 8:  // CBD             (SINGULAR)
-                    vec = SingleEdges((c, b, d),       (0x4, 0x2, 0x8), o);
-                    break;
-                case 9:  // ADB & CBD       (DUAL)
-                    vec = DualEdges((b, d, c, a),      (0x2, 0x8, 0x4, 0x1), o);
-                    break;
-                case 10: // ACD & CBD       (DUAL)
-                    vec = DualEdges((c, d, a, b),      (0x4, 0x8, 0x1, 0x2), o);
-                    break;
-                case 11: // ADB & ACD & CBD (TRIPLE)
-                    vec = TripleEdges((d, b, c, a),    (0x8, 0x2, 0x4, 0x1), o);
-                    break;
-                case 12: // ABC & CBD       (DUAL)
-                    vec = DualEdges((b, c, a, d),      (0x2, 0x4, 0x1, 0x8), o);
-                    break;
-                case 13: // ADB & ABC & CBD (TRIPLE)
-                    vec = TripleEdges((b, a, c, d),    (0x2, 0x1, 0x4, 0x8), o);
-                    break;
-                case 14: // ACD & ABC & CBD (TRIPLE)
-                    vec = TripleEdges((c, b, a, d),    (0x4, 0x2, 0x1, 0x8), o);
-                    break;
-                default:
-                    vec = (0, o);
-                break;
-            }
-
-            return (vec.reg, vec.v);
         }
+#endif
     }
 }
